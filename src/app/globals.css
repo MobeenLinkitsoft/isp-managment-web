@@ -24,3 +24,39 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@media print {
+  @page {
+    margin: 0;
+    size: A4;
+  }
+  
+  body {
+    margin: 0;
+    padding: 15mm;
+    background: white;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+  
+  .print\:shadow-none {
+    box-shadow: none !important;
+  }
+  
+  .print\:rounded-none {
+    border-radius: 0 !important;
+  }
+  
+  /* Ensure proper spacing for print */
+  .bg-white {
+    background-color: white !important;
+  }
+  
+  /* Force black text for better print contrast */
+  * {
+    color: black !important;
+    border-color: #ddd !important;
+  }
+}
