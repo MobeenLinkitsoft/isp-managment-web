@@ -167,37 +167,60 @@ export default function CustomerForm() {
     return isValid;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+ const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  
+  if (!validateForm()) {
+    alert('Please fix all errors before submitting');
+    return;
+  }
+
+  try {
+    setSaving(true);
+    const apiData = { ...formData };
     
-    if (!validateForm()) {
-      alert('Please fix all errors before submitting');
-      return;
+    if (id && !apiData.password) {
+      delete apiData.password;
     }
 
-    try {
-      setSaving(true);
-      const apiData = { ...formData };
-      
-      if (id && !apiData.password) {
-        delete apiData.password;
+    // Convert plan and connectionType to objects with id and name
+    const formattedData: any = { ...apiData };
+    
+    if (formattedData.plan) {
+      const selectedPlan = packages.find(p => p.id === formattedData.plan);
+      if (selectedPlan) {
+        formattedData.plan = { 
+          id: selectedPlan.id, 
+          name: selectedPlan.name 
+        };
       }
-
-      if (id) {
-        await updateCustomer(id, apiData);
-      } else {
-        await addCustomer(apiData);
-      }
-      
-      router.push('/customers');
-      router.refresh();
-    } catch (error) {
-      console.error('Error saving customer:', error);
-      alert(`Failed to ${id ? 'update' : 'add'} customer`);
-    } finally {
-      setSaving(false);
     }
-  };
+    
+    if (formattedData.connectionType) {
+      const selectedConnection = connectionTypes.find(ct => ct.id === formattedData.connectionType);
+      if (selectedConnection) {
+        formattedData.connectionType = { 
+          id: selectedConnection.id, 
+          name: selectedConnection.name 
+        };
+      }
+    }
+
+    if (id) {
+      await updateCustomer(id, formattedData);
+    } else {
+      await addCustomer(formattedData);
+    }
+    
+    router.push('/customers');
+    router.refresh();
+  } catch (error) {
+    console.error('Error saving customer:', error);
+    alert(`Failed to ${id ? 'update' : 'add'} customer`);
+  } finally {
+    setSaving(false);
+  }
+};
 
   if (loading) {
     return (

@@ -31,7 +31,7 @@ export default function InventoryDetail() {
     const loadItem = async () => {
       try {
         const data = await fetchInventoryItem(id);
-        setItem(data?.inventory);
+        setItem(data);
       } catch (error) {
         console.error("Error loading item:", error);
         alert("Failed to load item details");

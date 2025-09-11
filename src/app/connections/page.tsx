@@ -61,37 +61,6 @@ export default function ConnectionsPage() {
     loadConnections();
   };
 
-  const handleStatusToggle = async (connection: ConnectionType) => {
-    const newStatus = !connection.isActive;
-    const action = newStatus ? "activate" : "deactivate";
-
-    if (
-      !confirm(
-        `Are you sure you want to ${action} "${connection.name}"?`
-      )
-    ) return;
-
-    try {
-      setUpdatingId(connection.id);
-      if (newStatus) {
-        // await restoreConnectionType(connection.id);
-      } else {
-        await deleteConnectionType(connection.id);
-      }
-      
-      // Update local state immediately for better UX
-      setConnections(prev => prev.map(conn => 
-        conn.id === connection.id ? { ...conn, isActive: newStatus } : conn
-      ));
-      
-      alert(`Connection ${action}d successfully`);
-    } catch (error) {
-      console.error(`Error ${action}ing connection:`, error);
-      alert(`Failed to ${action} connection`);
-    } finally {
-      setUpdatingId(null);
-    }
-  };
 
   const handleSort = (key: string) => {
     let direction: "asc" | "desc" = "asc";

@@ -6,6 +6,7 @@ export interface ConnectionType {
   description: string;
   createdAt?: string;
   updatedAt?: string;
+  isActive?: string;
 }
 
 export const fetchConnectionTypes = async (): Promise<ConnectionType[]> => {

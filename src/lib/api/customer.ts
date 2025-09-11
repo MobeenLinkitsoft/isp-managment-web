@@ -4,6 +4,7 @@ export interface Customer {
   id: string;
   name: string;
   username: string;
+  phone: string;
   email: string;
   mobile: string;
   nationalId: string;
@@ -12,6 +13,7 @@ export interface Customer {
   plan: {
     id: string;
     name: string;
+      price: number; // required
   };
   connectionType: {
     id: string;

@@ -36,7 +36,7 @@ export default function EditInventoryItem() {
     const loadItem = async () => {
       try {
         const data = await fetchInventoryItem(id);
-        setFormData(data.inventory);
+        setFormData(data);
       } catch (error) {
         console.error("Error loading item:", error);
         alert("Failed to load item");

@@ -27,7 +27,7 @@ export const fetchInventory = async (): Promise<InventoryItem[]> => {
 
 export const fetchInventoryItem = async (id: string): Promise<InventoryItem> => {
   const { data } = await apiClient.get(`/inventory/${id}`);
-  return data;
+  return data?.inventory;
 };
 
 export const addInventoryItem = async (item: Omit<InventoryItem, 'id'>): Promise<InventoryItem> => {

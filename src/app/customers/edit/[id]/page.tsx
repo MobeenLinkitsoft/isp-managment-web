@@ -1,17 +1,17 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import Link from 'next/link';
+import { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
+import Link from "next/link";
 import {
   ArrowLeftIcon,
   CheckIcon,
   WifiIcon,
   CreditCardIcon,
-} from '@heroicons/react/24/outline';
-import { updateCustomer, fetchCustomer } from '../../../../lib/api/customer';
-import { fetchConnectionTypes } from '../../../../lib/api/connections';
-import { fetchPackages } from '../../../../lib/api/packages';
+} from "@heroicons/react/24/outline";
+import { updateCustomer, fetchCustomer } from "../../../../lib/api/customer";
+import { fetchConnectionTypes } from "../../../../lib/api/connections";
+import { fetchPackages } from "../../../../lib/api/packages";
 
 interface FormData {
   name: string;
@@ -30,52 +30,53 @@ export default function EditCustomer() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
-  
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [connectionTypes, setConnectionTypes] = useState<any[]>([]);
   const [packages, setPackages] = useState<any[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  
+
   const [formData, setFormData] = useState<FormData>({
-    name: '',
-    username: '',
-    password: '',
-    plan: '',
-    connectionType: '',
-    nationalId: '',
-    mobile: '',
-    phone: '',
-    email: '',
-    address: '',
+    name: "",
+    username: "",
+    password: "",
+    plan: "",
+    connectionType: "",
+    nationalId: "",
+    mobile: "",
+    phone: "",
+    email: "",
+    address: "",
   });
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [connectionTypesData, packagesData, customerData] = await Promise.all([
-          fetchConnectionTypes(),
-          fetchPackages(),
-          fetchCustomer(id),
-        ]);
-        
+        const [connectionTypesData, packagesData, customerData] =
+          await Promise.all([
+            fetchConnectionTypes(),
+            fetchPackages(),
+            fetchCustomer(id),
+          ]);
+
         setConnectionTypes(connectionTypesData);
         setPackages(packagesData);
         setFormData({
           name: customerData.name,
           username: customerData.username,
-          password: '',
-          plan: customerData.plan?.id || '',
-          connectionType: customerData.connectionType?.id || '',
+          password: "",
+          plan: customerData.plan?.id || "",
+          connectionType: customerData.connectionType?.id || "",
           nationalId: customerData.nationalId,
           mobile: customerData.mobile,
-          phone: customerData.phone || '',
-          email: customerData.email || '',
-          address: customerData.address || '',
+          phone: customerData.phone || "",
+          email: customerData.email || "",
+          address: customerData.address || "",
         });
       } catch (error) {
-        console.error('Error loading form data:', error);
-        alert('Failed to load form data');
+        console.error("Error loading form data:", error);
+        alert("Failed to load form data");
       } finally {
         setLoading(false);
       }
@@ -88,33 +89,35 @@ export default function EditCustomer() {
     const newErrors = { ...errors };
 
     switch (field) {
-      case 'name':
-        if (!value) newErrors.name = 'Name is required';
+      case "name":
+        if (!value) newErrors.name = "Name is required";
         else delete newErrors.name;
         break;
-      case 'username':
-        if (!value) newErrors.username = 'Username is required';
-        else if (value.length < 3) newErrors.username = 'Username must be at least 3 characters';
+      case "username":
+        if (!value) newErrors.username = "Username is required";
+        else if (value.length < 3)
+          newErrors.username = "Username must be at least 3 characters";
         else delete newErrors.username;
         break;
-      case 'password':
-        if (value && value.length < 4) newErrors.password = 'Password must be at least 4 characters';
+      case "password":
+        if (value && value.length < 4)
+          newErrors.password = "Password must be at least 4 characters";
         else delete newErrors.password;
         break;
-      case 'nationalId':
-        if (!value) newErrors.nationalId = 'National ID is required';
+      case "nationalId":
+        if (!value) newErrors.nationalId = "National ID is required";
         else delete newErrors.nationalId;
         break;
-      case 'mobile':
-        if (!value) newErrors.mobile = 'Mobile number is required';
+      case "mobile":
+        if (!value) newErrors.mobile = "Mobile number is required";
         else delete newErrors.mobile;
         break;
-      case 'plan':
-        if (!value) newErrors.plan = 'Plan is required';
+      case "plan":
+        if (!value) newErrors.plan = "Plan is required";
         else delete newErrors.plan;
         break;
-      case 'connectionType':
-        if (!value) newErrors.connectionType = 'Connection type is required';
+      case "connectionType":
+        if (!value) newErrors.connectionType = "Connection type is required";
         else delete newErrors.connectionType;
         break;
       default:
@@ -126,15 +129,22 @@ export default function EditCustomer() {
   };
 
   const handleChange = (field: keyof FormData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
     validateField(field, value);
   };
 
   const validateForm = () => {
     let isValid = true;
-    const requiredFields: (keyof FormData)[] = ['name', 'username', 'nationalId', 'mobile', 'plan', 'connectionType'];
-    
-    requiredFields.forEach(field => {
+    const requiredFields: (keyof FormData)[] = [
+      "name",
+      "username",
+      "nationalId",
+      "mobile",
+      "plan",
+      "connectionType",
+    ];
+
+    requiredFields.forEach((field) => {
       isValid = validateField(field, formData[field]) && isValid;
     });
 
@@ -143,28 +153,47 @@ export default function EditCustomer() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
-      alert('Please fix all errors before submitting');
+      alert("Please fix all errors before submitting");
       return;
     }
 
     try {
       setSaving(true);
       const apiData = { ...formData };
-      
+
       // Remove password if empty (keep current password)
       if (!apiData.password) {
         delete apiData.password;
       }
 
-      await updateCustomer(id, apiData);
-      
-      router.push('/customers');
+      // Convert plan and connectionType to objects if they exist
+      const formattedData: any = { ...apiData };
+
+      if (formattedData.plan) {
+        const selectedPlan = packages.find((p) => p.id === formattedData.plan);
+        formattedData.plan = selectedPlan
+          ? { id: selectedPlan.id, name: selectedPlan.name }
+          : undefined;
+      }
+
+      if (formattedData.connectionType) {
+        const selectedConnection = connectionTypes.find(
+          (ct) => ct.id === formattedData.connectionType
+        );
+        formattedData.connectionType = selectedConnection
+          ? { id: selectedConnection.id, name: selectedConnection.name }
+          : undefined;
+      }
+
+      await updateCustomer(id, formattedData);
+
+      router.push("/customers");
       router.refresh();
     } catch (error) {
-      console.error('Error updating customer:', error);
-      alert('Failed to update customer');
+      console.error("Error updating customer:", error);
+      alert("Failed to update customer");
     } finally {
       setSaving(false);
     }
@@ -189,12 +218,13 @@ export default function EditCustomer() {
           >
             <ArrowLeftIcon className="w-5 h-5" />
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900">
-            Edit Customer
-          </h1>
+          <h1 className="text-3xl font-bold text-gray-900">Edit Customer</h1>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6">
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white rounded-lg shadow p-6"
+        >
           {/* Basic Information */}
           <div className="mb-8">
             <h2 className="text-xl font-semibold mb-4">Basic Information</h2>
@@ -206,12 +236,14 @@ export default function EditCustomer() {
                 <input
                   type="text"
                   className={`w-full px-3 py-2 border rounded-md ${
-                    errors.name ? 'border-red-500' : 'border-gray-300'
+                    errors.name ? "border-red-500" : "border-gray-300"
                   }`}
                   value={formData.name}
-                  onChange={(e) => handleChange('name', e.target.value)}
+                  onChange={(e) => handleChange("name", e.target.value)}
                 />
-                {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+                {errors.name && (
+                  <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+                )}
               </div>
 
               <div>
@@ -221,12 +253,14 @@ export default function EditCustomer() {
                 <input
                   type="text"
                   className={`w-full px-3 py-2 border rounded-md ${
-                    errors.username ? 'border-red-500' : 'border-gray-300'
+                    errors.username ? "border-red-500" : "border-gray-300"
                   }`}
                   value={formData.username}
-                  onChange={(e) => handleChange('username', e.target.value)}
+                  onChange={(e) => handleChange("username", e.target.value)}
                 />
-                {errors.username && <p className="text-red-500 text-sm mt-1">{errors.username}</p>}
+                {errors.username && (
+                  <p className="text-red-500 text-sm mt-1">{errors.username}</p>
+                )}
               </div>
 
               <div>
@@ -236,12 +270,14 @@ export default function EditCustomer() {
                 <input
                   type="password"
                   className={`w-full px-3 py-2 border rounded-md ${
-                    errors.password ? 'border-red-500' : 'border-gray-300'
+                    errors.password ? "border-red-500" : "border-gray-300"
                   }`}
                   value={formData.password}
-                  onChange={(e) => handleChange('password', e.target.value)}
+                  onChange={(e) => handleChange("password", e.target.value)}
                 />
-                {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
+                {errors.password && (
+                  <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+                )}
               </div>
 
               <div>
@@ -251,12 +287,16 @@ export default function EditCustomer() {
                 <input
                   type="text"
                   className={`w-full px-3 py-2 border rounded-md ${
-                    errors.nationalId ? 'border-red-500' : 'border-gray-300'
+                    errors.nationalId ? "border-red-500" : "border-gray-300"
                   }`}
                   value={formData.nationalId}
-                  onChange={(e) => handleChange('nationalId', e.target.value)}
+                  onChange={(e) => handleChange("nationalId", e.target.value)}
                 />
-                {errors.nationalId && <p className="text-red-500 text-sm mt-1">{errors.nationalId}</p>}
+                {errors.nationalId && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.nationalId}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -272,12 +312,14 @@ export default function EditCustomer() {
                 <input
                   type="tel"
                   className={`w-full px-3 py-2 border rounded-md ${
-                    errors.mobile ? 'border-red-500' : 'border-gray-300'
+                    errors.mobile ? "border-red-500" : "border-gray-300"
                   }`}
                   value={formData.mobile}
-                  onChange={(e) => handleChange('mobile', e.target.value)}
+                  onChange={(e) => handleChange("mobile", e.target.value)}
                 />
-                {errors.mobile && <p className="text-red-500 text-sm mt-1">{errors.mobile}</p>}
+                {errors.mobile && (
+                  <p className="text-red-500 text-sm mt-1">{errors.mobile}</p>
+                )}
               </div>
 
               <div>
@@ -288,7 +330,7 @@ export default function EditCustomer() {
                   type="tel"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   value={formData.phone}
-                  onChange={(e) => handleChange('phone', e.target.value)}
+                  onChange={(e) => handleChange("phone", e.target.value)}
                 />
               </div>
 
@@ -300,7 +342,7 @@ export default function EditCustomer() {
                   type="email"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   value={formData.email}
-                  onChange={(e) => handleChange('email', e.target.value)}
+                  onChange={(e) => handleChange("email", e.target.value)}
                 />
               </div>
 
@@ -312,7 +354,7 @@ export default function EditCustomer() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   rows={3}
                   value={formData.address}
-                  onChange={(e) => handleChange('address', e.target.value)}
+                  onChange={(e) => handleChange("address", e.target.value)}
                 />
               </div>
             </div>
@@ -328,10 +370,12 @@ export default function EditCustomer() {
                 </label>
                 <select
                   className={`w-full px-3 py-2 border rounded-md ${
-                    errors.connectionType ? 'border-red-500' : 'border-gray-300'
+                    errors.connectionType ? "border-red-500" : "border-gray-300"
                   }`}
                   value={formData.connectionType}
-                  onChange={(e) => handleChange('connectionType', e.target.value)}
+                  onChange={(e) =>
+                    handleChange("connectionType", e.target.value)
+                  }
                 >
                   <option value="">Select Connection Type</option>
                   {connectionTypes.map((type) => (
@@ -340,7 +384,11 @@ export default function EditCustomer() {
                     </option>
                   ))}
                 </select>
-                {errors.connectionType && <p className="text-red-500 text-sm mt-1">{errors.connectionType}</p>}
+                {errors.connectionType && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.connectionType}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -349,10 +397,10 @@ export default function EditCustomer() {
                 </label>
                 <select
                   className={`w-full px-3 py-2 border rounded-md ${
-                    errors.plan ? 'border-red-500' : 'border-gray-300'
+                    errors.plan ? "border-red-500" : "border-gray-300"
                   }`}
                   value={formData.plan}
-                  onChange={(e) => handleChange('plan', e.target.value)}
+                  onChange={(e) => handleChange("plan", e.target.value)}
                 >
                   <option value="">Select Plan</option>
                   {packages.map((pkg) => (
@@ -361,7 +409,9 @@ export default function EditCustomer() {
                     </option>
                   ))}
                 </select>
-                {errors.plan && <p className="text-red-500 text-sm mt-1">{errors.plan}</p>}
+                {errors.plan && (
+                  <p className="text-red-500 text-sm mt-1">{errors.plan}</p>
+                )}
               </div>
             </div>
           </div>
@@ -374,7 +424,7 @@ export default function EditCustomer() {
               className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center"
             >
               {saving ? (
-                'Saving...'
+                "Saving..."
               ) : (
                 <>
                   <CheckIcon className="w-5 h-5 mr-2" />

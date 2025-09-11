@@ -19,6 +19,10 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+const getRefreshToken = () =>{
+
+}
+
 // Response interceptor
 apiClient.interceptors.response.use(
   (response) => response,
@@ -28,23 +32,23 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       
-      try {
-        const refreshToken = getRefreshToken();
-        if (refreshToken) {
-          const response = await axios.post(`${BASE_URL}user/refresh`, { 
-            token: refreshToken 
-          });
+      // try {
+      //   const refreshToken = getRefreshToken();
+      //   if (refreshToken) {
+      //     const response = await axios.post(`${BASE_URL}user/refresh`, { 
+      //       token: refreshToken 
+      //     });
           
-          const newAccessToken = response.data.accessToken;
-          setAccessToken(newAccessToken);
+      //     const newAccessToken = response.data.accessToken;
+      //     setAccessToken(newAccessToken);
           
-          originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
-          return apiClient(originalRequest);
-        }
-      } catch (refreshError) {
-        console.error('Failed to refresh token:', refreshError);
-        logout();
-      }
+      //     originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
+      //     return apiClient(originalRequest);
+      //   }
+      // } catch (refreshError) {
+      //   console.error('Failed to refresh token:', refreshError);
+      //   logout();
+      // }
     }
     
     return Promise.reject(error);
