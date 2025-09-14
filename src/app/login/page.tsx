@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import apiClient from '../../lib/api-client';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -12,39 +13,33 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError('');
+const handleLogin = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setIsLoading(true);
+  setError("");
 
-    try {
-      
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
+  try {
+    const { data } = await apiClient.post("/auth/login", {
+      email,
+      password,
+    });
 
-      const responseData = await response.json();
-      console.log('API Response:', { status: response.status, data: responseData });
+    // expected: data.token and data.user (adjust if your backend fields differ)
+    localStorage.setItem("accessToken", data.token);
+    localStorage.setItem("currentUser", JSON.stringify(data.user));
 
-      if (response.ok) {
-        // Store tokens and user data
-        localStorage.setItem('accessToken', responseData.token);
-        localStorage.setItem('currentUser', JSON.stringify(responseData.user));
-        router.push('/dashboard');
-      } else {
-        setError(responseData.error || 'Invalid email or password');
-      }
-    } catch (err) {
-      console.error('Login error:', err);
-      setError('Login failed. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    router.push("/dashboard");
+  } catch (err: any) {
+    console.error("Login error:", err?.response?.data || err?.message);
+    const message =
+      err?.response?.data?.error ||
+      err?.response?.data?.message ||
+      "Login failed. Please check credentials.";
+    setError(message);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-600 to-indigo-500 py-12 px-4 sm:px-6 lg:px-8">
