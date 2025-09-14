@@ -18,8 +18,6 @@ export default function LoginScreen() {
     setError('');
 
     try {
-      console.log('Attempting login with:', { email, password });
-      
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
