@@ -1,13 +1,4 @@
 [[headers]]
   for = "/*"
   [headers.values]
-    Content-Security-Policy = """
-      default-src 'self';
-      script-src 'self' 'unsafe-inline' https://js.stripe.com;
-      connect-src 'self' http://52.3.153.225:1337 https://api.stripe.com wss:;
-      style-src 'self' 'unsafe-inline';
-      img-src 'self' data:;
-      object-src 'none';
-      base-uri 'self';
-      frame-ancestors 'none';
-    """
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://js.stripe.com; connect-src 'self' http://52.3.153.225:1337 https://api.stripe.com wss:; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none';"
