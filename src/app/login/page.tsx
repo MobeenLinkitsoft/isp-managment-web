@@ -19,7 +19,7 @@ const handleLogin = async (e: React.FormEvent) => {
   setError("");
 
   try {
-    const { data } = await apiClient.post("/auth/login", {
+    const { data } = await apiClient.post("/api/auth/login", {
       email,
       password,
     });

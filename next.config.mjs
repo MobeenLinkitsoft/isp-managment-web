@@ -1,6 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Security header (allow stripe + only same-origin connect)
   async headers() {
     return [
       {
@@ -11,7 +10,7 @@ const nextConfig = {
             value:
               "default-src 'self'; " +
               "script-src 'self' 'unsafe-inline' https://js.stripe.com; " +
-              "connect-src 'self' https://api.stripe.com wss:; " +
+              "connect-src 'self' http://52.3.153.225:1337 https://api.stripe.com wss:; " +
               "style-src 'self' 'unsafe-inline'; " +
               "img-src 'self' data:; " +
               "object-src 'none'; " +
@@ -23,12 +22,11 @@ const nextConfig = {
     ];
   },
 
-  // Proxy all /api/* requests to your EC2 backend's /api/* paths
   async rewrites() {
     return [
       {
         source: "/api/:path*",
-        destination: "http://52.3.153.225:1337/api/:path*",
+        destination: "http://52.3.153.225:1337/:path*", // your backend
       },
     ];
   },
