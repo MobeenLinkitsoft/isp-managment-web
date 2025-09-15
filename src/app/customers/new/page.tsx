@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import Link from 'next/link';
+import { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
+import Link from "next/link";
 import {
   ArrowLeftIcon,
   CheckIcon,
@@ -14,47 +14,53 @@ import {
   MapPinIcon,
   IdentificationIcon,
   LockClosedIcon,
-} from '@heroicons/react/24/outline';
-import { addCustomer, updateCustomer, fetchCustomer } from '../../../lib/api/customer';
-import { fetchConnectionTypes } from '../../../lib/api/connections';
-import { fetchPackages } from '../../../lib/api/packages';
+} from "@heroicons/react/24/outline";
+import {
+  addCustomer,
+  updateCustomer,
+  fetchCustomer,
+} from "../../../lib/api/customer";
+import { fetchConnectionTypes } from "../../../lib/api/connections";
+import { fetchPackages } from "../../../lib/api/packages";
 
 interface FormData {
   name: string;
   username: string;
   password: string;
-  plan: string;
-  connectionType: string;
+  plan: string; // This should be just the ID string
+  connectionType: string; // This should be just the ID string
   nationalId: string;
   mobile: string;
   phone: string;
   email: string;
   address: string;
+  status: string; // Add status field
 }
 
 export default function CustomerForm() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
-  
+
   const [loading, setLoading] = useState(!!id);
   const [saving, setSaving] = useState(false);
   const [connectionTypes, setConnectionTypes] = useState<any[]>([]);
   const [packages, setPackages] = useState<any[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [activeTab, setActiveTab] = useState('basic');
-  
+  const [activeTab, setActiveTab] = useState("basic");
+
   const [formData, setFormData] = useState<FormData>({
-    name: '',
-    username: '',
-    password: '',
-    plan: '',
-    connectionType: '',
-    nationalId: '',
-    mobile: '',
-    phone: '',
-    email: '',
-    address: '',
+    name: "",
+    username: "",
+    password: "",
+    plan: "",
+    connectionType: "",
+    nationalId: "",
+    mobile: "",
+    phone: "",
+    email: "",
+    address: "",
+    status: "pending", // Add default status
   });
 
   useEffect(() => {
@@ -64,34 +70,13 @@ export default function CustomerForm() {
           fetchConnectionTypes(),
           fetchPackages(),
         ]);
-        
+
         setConnectionTypes(connectionTypesData);
         setPackages(packagesData);
 
-        if (id) {
-          const customerData = await fetchCustomer(id);
-          setFormData({
-            name: customerData.name,
-            username: customerData.username,
-            password: '',
-            plan: customerData.plan?.id || '',
-            connectionType: customerData.connectionType?.id || '',
-            nationalId: customerData.nationalId,
-            mobile: customerData.mobile,
-            phone: customerData.phone || '',
-            email: customerData.email || '',
-            address: customerData.address || '',
-          });
-        } else if (connectionTypesData.length > 0 && packagesData.length > 0) {
-          setFormData(prev => ({
-            ...prev,
-            connectionType: connectionTypesData[0].id,
-            plan: packagesData[0].id,
-          }));
-        }
       } catch (error) {
-        console.error('Error loading form data:', error);
-        alert('Failed to load form data');
+        console.error("Error loading form data:", error);
+        alert("Failed to load form data");
       } finally {
         setLoading(false);
       }
@@ -104,123 +89,212 @@ export default function CustomerForm() {
     const newErrors = { ...errors };
 
     switch (field) {
-      case 'name':
-        if (!value) newErrors.name = 'Name is required';
+      case "name":
+        if (!value) newErrors.name = "Name is required";
         else delete newErrors.name;
         break;
-      case 'username':
-        if (!value) newErrors.username = 'Username is required';
-        else if (value.length < 3) newErrors.username = 'Username must be at least 3 characters';
+      case "username":
+        if (!value) newErrors.username = "Username is required";
+        else if (value.length < 3)
+          newErrors.username = "Username must be at least 3 characters";
         else delete newErrors.username;
         break;
-      case 'password':
-        if (!id && !value) newErrors.password = 'Password is required';
-        else if (value && value.length < 4) newErrors.password = 'Password must be at least 4 characters';
+      case "password":
+        if (!id && !value) newErrors.password = "Password is required";
+        else if (value && value.length < 4)
+          newErrors.password = "Password must be at least 4 characters";
         else delete newErrors.password;
         break;
-      case 'nationalId':
-        if (!value) newErrors.nationalId = 'National ID is required';
+      case "nationalId":
+        if (!value) newErrors.nationalId = "National ID is required";
+        else if (value.length < 5 || value.length > 13)
+          newErrors.nationalId = "Must be between 13 characters";
         else delete newErrors.nationalId;
         break;
-      case 'mobile':
-        if (!value) newErrors.mobile = 'Mobile number is required';
-        else if (!/^[0-9]{10}$/.test(value)) newErrors.mobile = 'Mobile number must be 10 digits';
+      case "mobile":
+        if (!value) newErrors.mobile = "Mobile number is required";
+        else if (value.length < 10 || value.length > 11)
+          newErrors.mobile = "Must be between 11 digits";
+        else if (!/^\d+$/.test(value))
+          newErrors.mobile = "Must contain only numbers";
         else delete newErrors.mobile;
         break;
-      case 'plan':
-        if (!value) newErrors.plan = 'Plan is required';
+      case "phone":
+        if (value && (value.length < 10 || value.length > 15))
+          newErrors.phone = "Must be between 10-15 digits";
+        else if (value && !/^\d+$/.test(value))
+          newErrors.phone = "Must contain only numbers";
+        else delete newErrors.phone;
+        break;
+      case "email":
+        if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
+          newErrors.email = "Invalid email format";
+        else delete newErrors.email;
+        break;
+      case "address":
+        if (value && value.length > 500)
+          newErrors.address = "Address too long (max 500 chars)";
+        else delete newErrors.address;
+        break;
+      case "plan":
+        if (!value) newErrors.plan = "Plan is required";
         else delete newErrors.plan;
         break;
-      case 'connectionType':
-        if (!value) newErrors.connectionType = 'Connection type is required';
+      case "connectionType":
+        if (!value) newErrors.connectionType = "Connection type is required";
         else delete newErrors.connectionType;
-        break;
-      case 'email':
-        if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) newErrors.email = 'Invalid email format';
-        else delete newErrors.email;
         break;
       default:
         break;
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return !newErrors[field];
   };
 
   const handleChange = (field: keyof FormData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
     validateField(field, value);
   };
 
-  const validateForm = () => {
+  const validateCurrentTab = () => {
+    const newErrors = { ...errors };
     let isValid = true;
-    const requiredFields: (keyof FormData)[] = ['name', 'username', 'nationalId', 'mobile', 'plan', 'connectionType'];
-    
-    if (!id) {
-      requiredFields.push('password');
+
+    if (activeTab === "basic") {
+      if (!formData.name) {
+        newErrors.name = "Name is required";
+        isValid = false;
+      }
+      if (!formData.username) {
+        newErrors.username = "Username is required";
+        isValid = false;
+      } else if (formData.username.length < 3) {
+        newErrors.username = "Username must be at least 3 characters";
+        isValid = false;
+      }
+      if (!id && !formData.password) {
+        newErrors.password = "Password is required";
+        isValid = false;
+      } else if (formData.password && formData.password.length < 4) {
+        newErrors.password = "Password must be at least 4 characters";
+        isValid = false;
+      }
+      if (!formData.nationalId) {
+        newErrors.nationalId = "National ID is required";
+        isValid = false;
+      } else if (
+        formData.nationalId.length < 5 ||
+        formData.nationalId.length > 13
+      ) {
+        newErrors.nationalId = "Must be between 13 characters";
+        isValid = false;
+      }
+    } else if (activeTab === "contact") {
+      if (!formData.mobile) {
+        newErrors.mobile = "Mobile number is required";
+        isValid = false;
+      } else if (formData.mobile.length < 10 || formData.mobile.length > 11) {
+        newErrors.mobile = "Must be between 11 digits";
+        isValid = false;
+      } else if (!/^\d+$/.test(formData.mobile)) {
+        newErrors.mobile = "Must contain only numbers";
+        isValid = false;
+      }
+      if (
+        formData.phone &&
+        (formData.phone.length < 10 || formData.phone.length > 15)
+      ) {
+        newErrors.phone = "Must be between 10-15 digits";
+        isValid = false;
+      } else if (formData.phone && !/^\d+$/.test(formData.phone)) {
+        newErrors.phone = "Must contain only numbers";
+        isValid = false;
+      }
+      if (
+        formData.email &&
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)
+      ) {
+        newErrors.email = "Invalid email format";
+        isValid = false;
+      }
+      if (formData.address && formData.address.length > 500) {
+        newErrors.address = "Address too long (max 500 chars)";
+        isValid = false;
+      }
     }
 
-    requiredFields.forEach(field => {
-      isValid = validateField(field, formData[field]) && isValid;
-    });
-
+    setErrors(newErrors);
     return isValid;
   };
 
- const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  
-  if (!validateForm()) {
-    alert('Please fix all errors before submitting');
-    return;
-  }
-
-  try {
-    setSaving(true);
-    const apiData = { ...formData };
-    
-    if (id && !apiData.password) {
-      delete apiData.password;
+  const handleNext = () => {
+    if (!validateCurrentTab()) {
+      return;
     }
 
-    // Convert plan and connectionType to objects with id and name
-    const formattedData: any = { ...apiData };
-    
-    if (formattedData.plan) {
-      const selectedPlan = packages.find(p => p.id === formattedData.plan);
-      if (selectedPlan) {
-        formattedData.plan = { 
-          id: selectedPlan.id, 
-          name: selectedPlan.name 
-        };
+    if (activeTab === "basic") {
+      setActiveTab("contact");
+    } else if (activeTab === "contact") {
+      setActiveTab("connection");
+    }
+  };
+
+  const handlePrevious = () => {
+    if (activeTab === "connection") {
+      setActiveTab("contact");
+    } else if (activeTab === "contact") {
+      setActiveTab("basic");
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Validate connection tab specifically
+    const finalErrors = { ...errors };
+    let isValid = true;
+
+    if (!formData.plan) {
+      finalErrors.plan = "Plan is required";
+      isValid = false;
+    }
+    if (!formData.connectionType) {
+      finalErrors.connectionType = "Connection type is required";
+      isValid = false;
+    }
+
+    setErrors(finalErrors);
+
+    if (!isValid) {
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      // Prepare data for API - only send password if it's not empty (for updates)
+      const apiData: any = { ...formData };
+      if (id && !apiData.password) {
+        delete apiData.password; // Don't send empty password for updates
       }
-    }
-    
-    if (formattedData.connectionType) {
-      const selectedConnection = connectionTypes.find(ct => ct.id === formattedData.connectionType);
-      if (selectedConnection) {
-        formattedData.connectionType = { 
-          id: selectedConnection.id, 
-          name: selectedConnection.name 
-        };
-      }
-    }
 
-    if (id) {
-      await updateCustomer(id, formattedData);
-    } else {
-      await addCustomer(formattedData);
+      // Send the data exactly as React Native does (simple string IDs)
+      if (id) {
+        await updateCustomer(id, apiData);
+      } else {
+        await addCustomer(apiData);
+      }
+
+      router.push("/customers");
+      router.refresh();
+    } catch (error) {
+      console.error("Error saving customer:", error);
+      alert(`Failed to ${id ? "update" : "add"} customer`);
+    } finally {
+      setSaving(false);
     }
-    
-    router.push('/customers');
-    router.refresh();
-  } catch (error) {
-    console.error('Error saving customer:', error);
-    alert(`Failed to ${id ? 'update' : 'add'} customer`);
-  } finally {
-    setSaving(false);
-  }
-};
+  };
 
   if (loading) {
     return (
@@ -244,10 +318,12 @@ export default function CustomerForm() {
             </Link>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
-                {id ? 'Edit Customer' : 'VIP Customer Registration'}
+                {id ? "Edit Customer" : "Add New Customer"}
               </h1>
               <p className="text-gray-600 mt-1">
-                {id ? 'Update customer information' : 'Create a new customer account with premium features'}
+                {id
+                  ? "Update customer information"
+                  : "Create a new customer account"}
               </p>
             </div>
           </div>
@@ -257,21 +333,39 @@ export default function CustomerForm() {
         <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
           <div className="flex justify-center">
             <nav className="flex space-x-8" aria-label="Progress">
-              {['basic', 'contact', 'connection'].map((tab, index) => (
+              {["basic", "contact", "connection"].map((tab, index) => (
                 <button
                   key={tab}
-                  onClick={() => setActiveTab(tab)}
+                  onClick={() => {
+                    // Only allow switching to previous tabs, not forward without validation
+                    const currentIndex = [
+                      "basic",
+                      "contact",
+                      "connection",
+                    ].indexOf(activeTab);
+                    const targetIndex = [
+                      "basic",
+                      "contact",
+                      "connection",
+                    ].indexOf(tab);
+
+                    if (targetIndex < currentIndex) {
+                      setActiveTab(tab);
+                    }
+                  }}
                   className={`flex items-center ${
                     activeTab === tab
-                      ? 'text-indigo-600 border-indigo-600'
-                      : 'text-gray-500 border-gray-200 hover:text-gray-700'
+                      ? "text-indigo-600 border-indigo-600"
+                      : "text-gray-500 border-gray-200 hover:text-gray-700"
                   } border-b-2 pb-4 px-1 text-sm font-medium`}
                 >
-                  <span className={`flex-shrink-0 h-6 w-6 rounded-full flex items-center justify-center border-2 ${
-                    activeTab === tab
-                      ? 'border-indigo-600 bg-indigo-100 text-indigo-600'
-                      : 'border-gray-300 bg-white text-gray-400'
-                  }`}>
+                  <span
+                    className={`flex-shrink-0 h-6 w-6 rounded-full flex items-center justify-center border-2 ${
+                      activeTab === tab
+                        ? "border-indigo-600 bg-indigo-100 text-indigo-600"
+                        : "border-gray-300 bg-white text-gray-400"
+                    }`}
+                  >
                     {index + 1}
                   </span>
                   <span className="ml-2 capitalize">{tab} Information</span>
@@ -281,16 +375,21 @@ export default function CustomerForm() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm p-8">
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white rounded-xl shadow-sm p-8"
+        >
           {/* Basic Information */}
-          {(activeTab === 'basic') && (
+          {activeTab === "basic" && (
             <div className="space-y-8">
               <div className="border-b border-gray-200 pb-6">
                 <h2 className="text-xl font-semibold text-gray-900 flex items-center">
                   <UserIcon className="w-6 h-6 mr-2 text-indigo-600" />
                   Basic Information
                 </h2>
-                <p className="text-gray-600 mt-2">Enter the customer's personal details</p>
+                <p className="text-gray-600 mt-2">
+                  Enter the customer's personal details
+                </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -301,13 +400,15 @@ export default function CustomerForm() {
                   <input
                     type="text"
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
-                      errors.name ? 'border-red-500' : 'border-gray-300'
+                      errors.name ? "border-red-500" : "border-gray-300"
                     }`}
                     value={formData.name}
-                    onChange={(e) => handleChange('name', e.target.value)}
-                    placeholder="Enter full name"
+                    onChange={(e) => handleChange("name", e.target.value)}
+                    placeholder="Enter customer name"
                   />
-                  {errors.name && <p className="text-red-500 text-sm mt-2">{errors.name}</p>}
+                  {errors.name && (
+                    <p className="text-red-500 text-sm mt-2">{errors.name}</p>
+                  )}
                 </div>
 
                 <div>
@@ -317,32 +418,45 @@ export default function CustomerForm() {
                   <input
                     type="text"
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
-                      errors.username ? 'border-red-500' : 'border-gray-300'
+                      errors.username ? "border-red-500" : "border-gray-300"
                     }`}
                     value={formData.username}
-                    onChange={(e) => handleChange('username', e.target.value)}
-                    placeholder="Choose a username"
+                    onChange={(e) => handleChange("username", e.target.value)}
+                    placeholder="Enter username (min 3 characters)"
+                    autoCapitalize="none"
                   />
-                  {errors.username && <p className="text-red-500 text-sm mt-2">{errors.username}</p>}
+                  {errors.username && (
+                    <p className="text-red-500 text-sm mt-2">
+                      {errors.username}
+                    </p>
+                  )}
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {id ? 'Password (leave empty to keep current)' : 'Password *'}
+                    {id ? "Password" : "Password *"}
                   </label>
                   <div className="relative">
                     <input
                       type="password"
                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
-                        errors.password ? 'border-red-500' : 'border-gray-300'
+                        errors.password ? "border-red-500" : "border-gray-300"
                       }`}
                       value={formData.password}
-                      onChange={(e) => handleChange('password', e.target.value)}
-                      placeholder="Enter secure password"
+                      onChange={(e) => handleChange("password", e.target.value)}
+                      placeholder={
+                        id
+                          ? "Leave empty to keep current password"
+                          : "Enter password (min 4 characters)"
+                      }
                     />
                     <LockClosedIcon className="absolute right-3 top-3.5 h-5 w-5 text-gray-400" />
                   </div>
-                  {errors.password && <p className="text-red-500 text-sm mt-2">{errors.password}</p>}
+                  {errors.password && (
+                    <p className="text-red-500 text-sm mt-2">
+                      {errors.password}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -352,27 +466,34 @@ export default function CustomerForm() {
                   <input
                     type="text"
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
-                      errors.nationalId ? 'border-red-500' : 'border-gray-300'
+                      errors.nationalId ? "border-red-500" : "border-gray-300"
                     }`}
                     value={formData.nationalId}
-                    onChange={(e) => handleChange('nationalId', e.target.value)}
-                    placeholder="Enter NIC number"
+                    onChange={(e) => handleChange("nationalId", e.target.value)}
+                    placeholder="Enter NIC number (13 characters)"
+                    maxLength={20}
                   />
-                  {errors.nationalId && <p className="text-red-500 text-sm mt-2">{errors.nationalId}</p>}
+                  {errors.nationalId && (
+                    <p className="text-red-500 text-sm mt-2">
+                      {errors.nationalId}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
           )}
 
           {/* Contact Information */}
-          {(activeTab === 'contact') && (
+          {activeTab === "contact" && (
             <div className="space-y-8">
               <div className="border-b border-gray-200 pb-6">
                 <h2 className="text-xl font-semibold text-gray-900 flex items-center">
                   <PhoneIcon className="w-6 h-6 mr-2 text-indigo-600" />
                   Contact Information
                 </h2>
-                <p className="text-gray-600 mt-2">Enter the customer's contact details</p>
+                <p className="text-gray-600 mt-2">
+                  Enter the customer's contact details
+                </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -383,13 +504,16 @@ export default function CustomerForm() {
                   <input
                     type="tel"
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
-                      errors.mobile ? 'border-red-500' : 'border-gray-300'
+                      errors.mobile ? "border-red-500" : "border-gray-300"
                     }`}
                     value={formData.mobile}
-                    onChange={(e) => handleChange('mobile', e.target.value)}
-                    placeholder="07XXXXXXXX"
+                    onChange={(e) => handleChange("mobile", e.target.value)}
+                    placeholder="Enter mobile number (11 digits)"
+                    maxLength={15}
                   />
-                  {errors.mobile && <p className="text-red-500 text-sm mt-2">{errors.mobile}</p>}
+                  {errors.mobile && (
+                    <p className="text-red-500 text-sm mt-2">{errors.mobile}</p>
+                  )}
                 </div>
 
                 <div>
@@ -398,11 +522,17 @@ export default function CustomerForm() {
                   </label>
                   <input
                     type="tel"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
+                      errors.phone ? "border-red-500" : "border-gray-300"
+                    }`}
                     value={formData.phone}
-                    onChange={(e) => handleChange('phone', e.target.value)}
-                    placeholder="Optional phone number"
+                    onChange={(e) => handleChange("phone", e.target.value)}
+                    placeholder="Enter phone number (11 digits)"
+                    maxLength={15}
                   />
+                  {errors.phone && (
+                    <p className="text-red-500 text-sm mt-2">{errors.phone}</p>
+                  )}
                 </div>
 
                 <div>
@@ -413,15 +543,18 @@ export default function CustomerForm() {
                     <input
                       type="email"
                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
-                        errors.email ? 'border-red-500' : 'border-gray-300'
+                        errors.email ? "border-red-500" : "border-gray-300"
                       }`}
                       value={formData.email}
-                      onChange={(e) => handleChange('email', e.target.value)}
-                      placeholder="customer@example.com"
+                      onChange={(e) => handleChange("email", e.target.value)}
+                      placeholder="Enter email address"
+                      autoCapitalize="none"
                     />
                     <EnvelopeIcon className="absolute right-3 top-3.5 h-5 w-5 text-gray-400" />
                   </div>
-                  {errors.email && <p className="text-red-500 text-sm mt-2">{errors.email}</p>}
+                  {errors.email && (
+                    <p className="text-red-500 text-sm mt-2">{errors.email}</p>
+                  )}
                 </div>
 
                 <div>
@@ -429,26 +562,36 @@ export default function CustomerForm() {
                     Address
                   </label>
                   <textarea
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
+                      errors.address ? "border-red-500" : "border-gray-300"
+                    }`}
                     rows={3}
                     value={formData.address}
-                    onChange={(e) => handleChange('address', e.target.value)}
-                    placeholder="Enter complete address"
+                    onChange={(e) => handleChange("address", e.target.value)}
+                    placeholder="Enter full address (max 500 characters)"
+                    maxLength={500}
                   />
+                  {errors.address && (
+                    <p className="text-red-500 text-sm mt-2">
+                      {errors.address}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
           )}
 
           {/* Connection Details */}
-          {(activeTab === 'connection') && (
+          {activeTab === "connection" && (
             <div className="space-y-8">
               <div className="border-b border-gray-200 pb-6">
                 <h2 className="text-xl font-semibold text-gray-900 flex items-center">
                   <WifiIcon className="w-6 h-6 mr-2 text-indigo-600" />
                   Connection Details
                 </h2>
-                <p className="text-gray-600 mt-2">Configure the customer's internet connection</p>
+                <p className="text-gray-600 mt-2">
+                  Configure the customer's internet connection
+                </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -458,10 +601,14 @@ export default function CustomerForm() {
                   </label>
                   <select
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
-                      errors.connectionType ? 'border-red-500' : 'border-gray-300'
+                      errors.connectionType
+                        ? "border-red-500"
+                        : "border-gray-300"
                     }`}
                     value={formData.connectionType}
-                    onChange={(e) => handleChange('connectionType', e.target.value)}
+                    onChange={(e) =>
+                      handleChange("connectionType", e.target.value)
+                    }
                   >
                     <option value="">Select Connection Type</option>
                     {connectionTypes.map((type) => (
@@ -470,7 +617,11 @@ export default function CustomerForm() {
                       </option>
                     ))}
                   </select>
-                  {errors.connectionType && <p className="text-red-500 text-sm mt-2">{errors.connectionType}</p>}
+                  {errors.connectionType && (
+                    <p className="text-red-500 text-sm mt-2">
+                      {errors.connectionType}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -479,72 +630,45 @@ export default function CustomerForm() {
                   </label>
                   <select
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
-                      errors.plan ? 'border-red-500' : 'border-gray-300'
+                      errors.plan ? "border-red-500" : "border-gray-300"
                     }`}
                     value={formData.plan}
-                    onChange={(e) => handleChange('plan', e.target.value)}
+                    onChange={(e) => handleChange("plan", e.target.value)}
                   >
                     <option value="">Select Internet Plan</option>
                     {packages.map((pkg) => (
                       <option key={pkg.id} value={pkg.id}>
-                        {pkg.name} - Rs{pkg.price}/month
+                        {pkg.name}
                       </option>
                     ))}
                   </select>
-                  {errors.plan && <p className="text-red-500 text-sm mt-2">{errors.plan}</p>}
+                  {errors.plan && (
+                    <p className="text-red-500 text-sm mt-2">{errors.plan}</p>
+                  )}
                 </div>
               </div>
-
-              {/* Plan Preview */}
-              {formData.plan && (
-                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-indigo-800 mb-2">Selected Plan</h3>
-                  {packages
-                    .filter(pkg => pkg.id === formData.plan)
-                    .map(pkg => (
-                      <div key={pkg.id} className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="text-gray-600">Plan Name:</span>
-                          <span className="font-medium ml-2">{pkg.name}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">Price:</span>
-                          <span className="font-medium ml-2">Rs{pkg.price}/month</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">Speed:</span>
-                          <span className="font-medium ml-2">{pkg.speed || 'N/A'}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">Data Limit:</span>
-                          <span className="font-medium ml-2">{pkg.dataLimit || 'Unlimited'}</span>
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              )}
             </div>
           )}
 
           {/* Navigation Buttons */}
           <div className="flex justify-between pt-8 border-t border-gray-200">
             <div>
-              {activeTab !== 'basic' && (
+              {activeTab !== "basic" && (
                 <button
                   type="button"
-                  onClick={() => setActiveTab(activeTab === 'connection' ? 'contact' : 'basic')}
+                  onClick={handlePrevious}
                   className="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300 transition-colors"
                 >
                   Previous
                 </button>
               )}
             </div>
-            
+
             <div className="flex space-x-3">
-              {activeTab !== 'connection' ? (
+              {activeTab !== "connection" ? (
                 <button
                   type="button"
-                  onClick={() => setActiveTab(activeTab === 'basic' ? 'contact' : 'connection')}
+                  onClick={handleNext}
                   className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
                 >
                   Next
@@ -553,14 +677,14 @@ export default function CustomerForm() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-3 rounded-lg hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 transition-colors flex items-center"
+                  className="bg-indigo-600 text-white px-8 py-3 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors flex items-center"
                 >
                   {saving ? (
-                    'Processing...'
+                    "Processing..."
                   ) : (
                     <>
                       <CheckIcon className="w-5 h-5 mr-2" />
-                      {id ? 'Update Customer' : 'Create VIP Account'}
+                      {id ? "Update Customer" : "Create Customer"}
                     </>
                   )}
                 </button>

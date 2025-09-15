@@ -10,6 +10,7 @@ export interface Customer {
   nationalId: string;
   address: string;
   isActive: boolean;
+  status:string;ƒ
   plan: {
     id: string;
     name: string;

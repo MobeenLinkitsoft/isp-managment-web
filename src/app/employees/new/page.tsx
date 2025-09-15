@@ -55,7 +55,7 @@ export default function CreateEmployee() {
       setIsSubmitting(true);
       await addEmployee(formData);
       alert('Employee created successfully!');
-      router.push('/employee');
+      router.push('/employees');
     } catch (error: any) {
       console.error('Error creating employee:', error);
       alert(error.message || 'Failed to create employee');
@@ -175,8 +175,6 @@ export default function CreateEmployee() {
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
               >
                 <option value="employee">Employee</option>
-                <option value="admin">Admin</option>
-                <option value="manager">Manager</option>
               </select>
             </div>
 

@@ -10,6 +10,8 @@ export interface Employee {
   isActive?: boolean;
   createdAt?: string;
   updatedAt?: string;
+  password?: string;
+
 }
 
 export interface EmployeesResponse {
@@ -41,7 +43,7 @@ export const fetchEmployees = async (): Promise<Employee[]> => {
 export const fetchEmployee = async (id: string): Promise<Employee> => {
   try {
     const { data } = await apiClient.get(`/users/${id}`);
-    return data;
+    return data?.user;
   } catch (error) {
     return handleApiError(error, 'Failed to fetch employee');
   }

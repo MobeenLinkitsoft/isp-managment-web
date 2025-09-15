@@ -99,7 +99,7 @@ export default function EmployeeList() {
           Employee Management
         </h1>
         <Link
-          href="/employee/new"
+          href="/employees/new"
           className="bg-indigo-600 text-white px-4 py-2 rounded-md flex items-center hover:bg-indigo-700"
         >
           <PlusIcon className="h-5 w-5 mr-2" />
@@ -267,6 +267,9 @@ export default function EmployeeList() {
                       <div className="text-sm text-gray-500">
                         {employee.phone}
                       </div>
+                       <div className="text-sm text-gray-500">
+                        {employee.password}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
@@ -288,7 +291,7 @@ export default function EmployeeList() {
                       <div className="flex items-center justify-end space-x-3">
                         <button
                           onClick={() =>
-                            router.push(`/employee/edit/${employee.id}`)
+                            router.push(`/employees/edit/${employee.id}`)
                           }
                           className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50"
                           title="Edit employee"

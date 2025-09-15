@@ -456,13 +456,13 @@ export default function CustomersPage() {
                             >
                               <EyeIcon className="w-5 h-5" />
                             </Link>
-                            <Link
+                            {/* <Link
                               href={`/customers/edit/${customer.id}`}
                               className="text-indigo-600 hover:text-indigo-900 p-1"
                               title="Edit"
                             >
                               <PencilIcon className="w-5 h-5" />
-                            </Link>
+                            </Link> */}
 
                             {/* Toggle Switch */}
                             <label className="relative inline-flex items-center cursor-pointer">
