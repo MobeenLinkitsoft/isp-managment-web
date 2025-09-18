@@ -1,19 +1,29 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import DrawerNavigation from './DrawerNavigation';
-import MobileDrawer from './MobileDrawer';
-import { Bars3Icon, ChartBarIcon, Cog6ToothIcon, CubeIcon, CurrencyDollarIcon, HomeIcon, UserGroupIcon, UsersIcon, WifiIcon } from '@heroicons/react/24/outline';
+import { useState } from "react";
+import DrawerNavigation from "./DrawerNavigation";
+import MobileDrawer from "./MobileDrawer";
+import {
+  Bars3Icon,
+  ChartBarIcon,
+  Cog6ToothIcon,
+  CubeIcon,
+  CurrencyDollarIcon,
+  HomeIcon,
+  UserGroupIcon,
+  UsersIcon,
+  WifiIcon,
+} from "@heroicons/react/24/outline";
 
 const navigationItems = [
-  { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
-  { name: 'Customers', href: '/customers', icon: UsersIcon },
-  { name: 'Connections', href: '/connections', icon: WifiIcon },
-  { name: 'Payments', href: '/payments', icon: CurrencyDollarIcon },
-  { name: 'Inventory', href: '/inventory', icon: CubeIcon },
-  { name: 'Employees', href: '/employees', icon: UserGroupIcon },
-  { name: 'Packages', href: '/packages', icon: ChartBarIcon },
-  { name: 'Settings', href: '/settings', icon: Cog6ToothIcon },
+  { name: "Dashboard", href: "/dashboard", icon: HomeIcon },
+  { name: "Customers", href: "/customers", icon: UsersIcon },
+  { name: "Connections", href: "/connections", icon: WifiIcon },
+  { name: "Payments", href: "/payments", icon: CurrencyDollarIcon },
+  { name: "Inventory", href: "/inventory", icon: CubeIcon },
+  { name: "Employees", href: "/employees", icon: UserGroupIcon },
+  { name: "Packages", href: "/packages", icon: ChartBarIcon },
+  { name: "Settings", href: "/settings", icon: Cog6ToothIcon },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -21,18 +31,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const handleLogout = () => {
     // Implement logout logic
-    console.log('Logout clicked');
+    console.log("Logout clicked");
   };
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <DrawerNavigation onLogout={handleLogout} />
-      <MobileDrawer 
-        isOpen={mobileDrawerOpen} 
+      <DrawerNavigation />
+      <MobileDrawer
+        isOpen={mobileDrawerOpen}
         onClose={() => setMobileDrawerOpen(false)}
         navigationItems={navigationItems}
       />
-      
+
       <div className="flex-1 flex flex-col">
         {/* Top bar */}
         <div className="lg:hidden flex items-center justify-between p-4 bg-white border-b border-gray-200">
@@ -51,9 +61,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Main content */}
-        <main className="flex-1 overflow-auto">
-          {children}
-        </main>
+        <main className="flex-1 overflow-auto">{children}</main>
       </div>
     </div>
   );
