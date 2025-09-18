@@ -15,6 +15,7 @@ export interface Payment {
     name: string;
     mobile: string;
     email?: string;
+    addedBy?: string;
   };
   plan: {
     id: string;
