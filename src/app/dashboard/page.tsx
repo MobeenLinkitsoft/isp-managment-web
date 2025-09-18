@@ -169,25 +169,25 @@ export default function Dashboard() {
   const quickActions = [
     {
       title: "Add Customer",
-      icon: <UsersIcon className="w-5 h-5 text-white" />,
+      icon: <UsersIcon className="w-5 h-5 text-[#4F46E5]" />,
       bg: "bg-indigo-600 hover:bg-indigo-700",
       href: "/customers/new",
     },
     {
       title: "Payments",
-      icon: <CurrencyDollarIcon className="w-5 h-5 text-white" />,
+      icon: <CurrencyDollarIcon className="w-5 h-5 text-[#10B981]" />,
       bg: "bg-green-600 hover:bg-green-700",
       href: "/khata",
     },
     {
       title: "Create Invoice",
-      icon: <ChartBarIcon className="w-5 h-5 text-white" />,
+      icon: <ChartBarIcon className="w-5 h-5 text-[#F59E0B]" />,
       bg: "bg-amber-600 hover:bg-amber-700",
       href: "/invoices/new",
     },
     {
       title: "Manage Packages",
-      icon: <CogIcon className="w-5 h-5 text-white" />,
+      icon: <CogIcon className="w-5 h-5 text-[#8B5CF6]" />,
       bg: "bg-purple-600 hover:bg-purple-700",
       href: "/packages",
     },
@@ -308,129 +308,6 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-     
-      {/* Desktop Sidebar */}
-      <div className="hidden lg:flex lg:flex-shrink-0">
-        <div className="flex w-64 flex-col">
-          <div className="flex min-h-0 flex-1 flex-col border-r border-gray-200 bg-white">
-            {/* Logo */}
-            <div className="flex flex-shrink-0 items-center px-6 py-4 border-b border-gray-200">
-              <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center mr-3">
-                <WifiIcon className="w-5 h-5 text-white" />
-              </div>
-              <h1 className="text-xl font-bold text-gray-900">ISP Manager</h1>
-            </div>
-
-            {/* Navigation */}
-            <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
-              <nav className="mt-5 flex-1 px-4 space-y-1">
-                {navigationItems.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = false; // You can implement active state logic
-
-                  return (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      className={`group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-colors ${
-                        isActive
-                          ? "bg-indigo-50 text-indigo-700 border-r-2 border-indigo-600"
-                          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                      }`}
-                    >
-                      <Icon
-                        className={`mr-3 flex-shrink-0 h-5 w-5 ${
-                          isActive
-                            ? "text-indigo-600"
-                            : "text-gray-400 group-hover:text-gray-500"
-                        }`}
-                      />
-                      {item.name}
-                    </Link>
-                  );
-                })}
-              </nav>
-            </div>
-
-            {/* User section */}
-            <div className="flex-shrink-0 flex border-t border-gray-200 p-4">
-              <div className="flex items-center w-full">
-                <div className="flex-shrink-0">
-                  <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
-                    <UsersIcon className="w-5 h-5 text-indigo-600" />
-                  </div>
-                </div>
-                <div className="ml-3 min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-900 truncate">
-                    {currentUser?.firstName || "Admin User"}
-                  </p>
-                  <p className="text-xs text-gray-500 truncate">
-                    Administrator
-                  </p>
-                </div>
-                <button
-                  onClick={handleLogoutPress}
-                  className="ml-3 flex-shrink-0 p-2 text-gray-400 hover:text-gray-500 rounded-md"
-                  title="Logout"
-                >
-                  <ArrowLeftIcon className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      {/* Mobile Drawer Overlay */}
-      {isDrawerOpen && (
-        <div className="lg:hidden fixed inset-0 z-40">
-          <div
-            className="fixed inset-0 bg-gray-600 bg-opacity-75"
-            onClick={() => setIsDrawerOpen(false)}
-          />
-          <div className="fixed inset-0 z-40 flex">
-            <div className="relative flex-1 flex flex-col w-64 max-w-xs bg-white">
-              <div className="absolute top-0 right-0 -mr-12 pt-2">
-                <button
-                  className="ml-1 flex items-center justify-center h-10 w-10 rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
-                  onClick={() => setIsDrawerOpen(false)}
-                >
-                  <XMarkIcon className="h-6 w-6 text-white" />
-                </button>
-              </div>
-              <div className="flex-1 h-0 pt-5 pb-4 overflow-y-auto">
-                <nav className="mt-5 px-2 space-y-1">
-                  {navigationItems.map((item) => {
-                    const Icon = item.icon;
-                    const isActive = false;
-
-                    return (
-                      <Link
-                        key={item.name}
-                        href={item.href}
-                        className={`group flex items-center px-2 py-2 text-base font-medium rounded-md transition-colors ${
-                          isActive
-                            ? "bg-indigo-50 text-indigo-700 border-r-2 border-indigo-600"
-                            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                        }`}
-                        onClick={() => setIsDrawerOpen(false)}
-                      >
-                        <Icon
-                          className={`mr-4 h-6 w-6 ${
-                            isActive
-                              ? "text-indigo-600"
-                              : "text-gray-400 group-hover:text-gray-500"
-                          }`}
-                        />
-                        {item.name}
-                      </Link>
-                    );
-                  })}
-                </nav>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
       {/* Main Content */}
       <div className="flex-1 flex flex-col lg:ml-0">
         {/* Header */}
@@ -444,7 +321,7 @@ export default function Dashboard() {
                 <Bars3Icon className="w-6 h-6" />
               </button>
               <div>
-                <p className="text-white text-xl">Welcome back,</p>
+                <p className="text-white text-xl">Welcome back, Naeem ISP</p>
                 <h1 className="text-white text-3xl font-bold">
                   {currentUser?.firstName || "User"}
                 </h1>
@@ -822,7 +699,7 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-       {isLoading && (
+      {isLoading && (
         <div className="fixed inset-0 bg-[rgba(0,0,0,0.8)] bg-opacity-20 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-lg p-6 flex flex-col items-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>

@@ -7,7 +7,6 @@ import {
   WifiIcon,
   PlusIcon,
   PencilIcon,
-  TrashIcon,
   MagnifyingGlassIcon,
   XMarkIcon,
   EyeIcon,
@@ -24,8 +23,19 @@ import {
   Package,
   fetchPackageStats,
 } from "../../lib/api/packages";
+import { getCurrentUser } from "../../lib/storage"; // ✅ Import user helper
 
 const ITEMS_PER_PAGE = 10;
+
+interface User {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+  isActive: boolean;
+  avatar?: string;
+}
 
 export default function PackagesPage() {
   const router = useRouter();
@@ -46,10 +56,21 @@ export default function PackagesPage() {
     direction: "asc" | "desc";
   } | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null); // ✅ Track current user
 
   useEffect(() => {
     loadData();
+    loadUser();
   }, []);
+
+  const loadUser = async () => {
+    try {
+      const user = await getCurrentUser();
+      if (user) setCurrentUser(user);
+    } catch (err) {
+      console.error("Failed to fetch user:", err);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -205,17 +226,6 @@ export default function PackagesPage() {
     return `Rs${price.toFixed(2)}`;
   };
 
-  // if (isLoading) {
-  //   return (
-  //     <div className="fixed inset-0 bg-[rgba(0,0,0,0.5)] flex items-center justify-center z-50">
-  //       <div className="text-center">
-  //         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-  //         <p className="mt-4 text-white font-medium">Loading packages...</p>
-  //       </div>
-  //     </div>
-  //   );
-  // }
-
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto p-6">
@@ -240,13 +250,16 @@ export default function PackagesPage() {
               />
               Refresh
             </button>
-            <Link
-              href="/packages/new"
-              className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center transition-colors"
-            >
-              <PlusIcon className="w-5 h-5 mr-2" />
-              Add Package
-            </Link>
+            {/* ✅ Show Add button only for admin */}
+            {currentUser?.role === "admin" && (
+              <Link
+                href="/packages/new"
+                className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center transition-colors"
+              >
+                <PlusIcon className="w-5 h-5 mr-2" />
+                Add Package
+              </Link>
+            )}
           </div>
         </div>
 
@@ -316,15 +329,18 @@ export default function PackagesPage() {
                   ? "Try a different search term"
                   : "Get started by adding your first package"}
               </p>
-              <div className="mt-6">
-                <Link
-                  href="/packages/new"
-                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  <PlusIcon className="-ml-1 mr-2 h-5 w-5" />
-                  Add Package
-                </Link>
-              </div>
+              {/* ✅ Show Add button only for admin */}
+              {currentUser?.role === "admin" && (
+                <div className="mt-6">
+                  <Link
+                    href="/packages/new"
+                    className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  >
+                    <PlusIcon className="-ml-1 mr-2 h-5 w-5" />
+                    Add Package
+                  </Link>
+                </div>
+              )}
             </div>
           ) : (
             <>
@@ -389,25 +405,16 @@ export default function PackagesPage() {
                             >
                               <EyeIcon className="w-5 h-5" />
                             </Link>
-                            <Link
-                              href={`/packages/edit/${pkg.id}`}
-                              className="text-indigo-600 hover:text-indigo-900 p-1"
-                              title="Edit"
-                            >
-                              <PencilIcon className="w-5 h-5" />
-                            </Link>
-                            {/* <button
-                              onClick={() => handleDelete(pkg.id, pkg.name)}
-                              disabled={deletingId === pkg.id}
-                              className="text-red-600 hover:text-red-900 p-1 disabled:opacity-50"
-                              title="Delete"
-                            >
-                              {deletingId === pkg.id ? (
-                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-600"></div>
-                              ) : (
-                                <TrashIcon className="w-5 h-5" />
-                              )}
-                            </button> */}
+                            {/* ✅ Show edit only for admin */}
+                            {currentUser?.role === "admin" && (
+                              <Link
+                                href={`/packages/edit/${pkg.id}`}
+                                className="text-indigo-600 hover:text-indigo-900 p-1"
+                                title="Edit"
+                              >
+                                <PencilIcon className="w-5 h-5" />
+                              </Link>
+                            )}
                           </div>
                         </td>
                       </tr>

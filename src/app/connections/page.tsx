@@ -19,11 +19,21 @@ import {
 import {
   fetchConnectionTypes,
   deleteConnectionType,
-  // restoreConnectionType,
   ConnectionType,
 } from "../../lib/api/connections";
+import { getCurrentUser } from "../../lib/storage"; // ✅ Import current user
 
 const ITEMS_PER_PAGE = 10;
+
+interface User {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+  isActive: boolean;
+  avatar?: string;
+}
 
 export default function ConnectionsPage() {
   const router = useRouter();
@@ -37,10 +47,21 @@ export default function ConnectionsPage() {
   } | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null); // ✅ Track logged-in user
 
   useEffect(() => {
     loadConnections();
+    fetchUser();
   }, []);
+
+  const fetchUser = async () => {
+    try {
+      const user = await getCurrentUser();
+      if (user) setCurrentUser(user);
+    } catch (err) {
+      console.error("Failed to fetch user:", err);
+    }
+  };
 
   const loadConnections = async () => {
     try {
@@ -60,7 +81,6 @@ export default function ConnectionsPage() {
     setRefreshing(true);
     loadConnections();
   };
-
 
   const handleSort = (key: string) => {
     let direction: "asc" | "desc" = "asc";
@@ -123,14 +143,14 @@ export default function ConnectionsPage() {
     },
     {
       title: "Active Types",
-      value: connections.filter(conn => conn?.isActive).length,
+      value: connections.filter((conn) => conn?.isActive).length,
       icon: ChartBarIcon,
       color: "bg-green-500",
       bgColor: "bg-green-100",
     },
     {
       title: "Inactive Types",
-      value: connections.filter(conn => !conn?.isActive).length,
+      value: connections.filter((conn) => !conn?.isActive).length,
       icon: WifiIcon,
       color: "bg-red-500",
       bgColor: "bg-red-100",
@@ -183,13 +203,17 @@ export default function ConnectionsPage() {
               />
               Refresh
             </button>
-            <Link
-              href="/connections/new"
-              className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center transition-colors"
-            >
-              <PlusIcon className="w-5 h-5 mr-2" />
-              Add Connection
-            </Link>
+
+            {/* ✅ Show Add Connection only for admin */}
+            {currentUser?.role === "admin" && (
+              <Link
+                href="/connections/new"
+                className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center transition-colors"
+              >
+                <PlusIcon className="w-5 h-5 mr-2" />
+                Add Connection
+              </Link>
+            )}
           </div>
         </div>
 
@@ -259,15 +283,19 @@ export default function ConnectionsPage() {
                   ? "Try a different search term"
                   : "Get started by adding your first connection type"}
               </p>
-              <div className="mt-6">
-                <Link
-                  href="/connections/new"
-                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  <PlusIcon className="-ml-1 mr-2 h-5 w-5" />
-                  Add Connection Type
-                </Link>
-              </div>
+
+              {/* ✅ Only show Add button for admin */}
+              {currentUser?.role === "admin" && (
+                <div className="mt-6">
+                  <Link
+                    href="/connections/new"
+                    className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  >
+                    <PlusIcon className="-ml-1 mr-2 h-5 w-5" />
+                    Add Connection Type
+                  </Link>
+                </div>
+              )}
             </div>
           ) : (
             <>
@@ -333,36 +361,17 @@ export default function ConnectionsPage() {
                             >
                               <EyeIcon className="w-5 h-5" />
                             </Link>
-                            <Link
-                              href={`/connections/edit/${connection.id}`}
-                              className="text-indigo-600 hover:text-indigo-900 p-1"
-                              title="Edit"
-                            >
-                              <PencilIcon className="w-5 h-5" />
-                            </Link>
-                            
-                            {/* Toggle Switch */}
-                            {/* <label className="relative inline-flex items-center cursor-pointer">
-                              <input
-                                type="checkbox"
-                                className="sr-only peer"
-                                checked={connection.isActive}
-                                onChange={() => handleStatusToggle(connection)}
-                                disabled={updatingId === connection.id}
-                              />
-                              <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer 
-                                peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] 
-                                after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border 
-                                after:rounded-full after:h-5 after:w-5 after:transition-all 
-                                ${connection.isActive ? 'peer-checked:bg-green-600' : 'bg-gray-400'}
-                                ${updatingId === connection.id ? 'opacity-50' : ''}
-                              `}></div>
-                              {updatingId === connection.id && (
-                                <div className="ml-2">
-                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
-                                </div>
-                              )}
-                            </label> */}
+
+                            {/* ✅ Show Pencil/Edit only if admin */}
+                            {currentUser?.role === "admin" && (
+                              <Link
+                                href={`/connections/edit/${connection.id}`}
+                                className="text-indigo-600 hover:text-indigo-900 p-1"
+                                title="Edit"
+                              >
+                                <PencilIcon className="w-5 h-5" />
+                              </Link>
+                            )}
                           </div>
                         </td>
                       </tr>

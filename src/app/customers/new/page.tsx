@@ -73,7 +73,6 @@ export default function CustomerForm() {
 
         setConnectionTypes(connectionTypesData);
         setPackages(packagesData);
-
       } catch (error) {
         console.error("Error loading form data:", error);
         alert("Failed to load form data");
@@ -119,13 +118,13 @@ export default function CustomerForm() {
           newErrors.mobile = "Must contain only numbers";
         else delete newErrors.mobile;
         break;
-      case "phone":
-        if (value && (value.length < 10 || value.length > 15))
-          newErrors.phone = "Must be between 10-15 digits";
-        else if (value && !/^\d+$/.test(value))
-          newErrors.phone = "Must contain only numbers";
-        else delete newErrors.phone;
-        break;
+      // case "phone":
+      //   if (value && (value.length < 10 || value.length > 15))
+      //     newErrors.phone = "Must be between 10-15 digits";
+      //   else if (value && !/^\d+$/.test(value))
+      //     newErrors.phone = "Must contain only numbers";
+      //   else delete newErrors.phone;
+      //   break;
       case "email":
         if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
           newErrors.email = "Invalid email format";
@@ -201,16 +200,16 @@ export default function CustomerForm() {
         newErrors.mobile = "Must contain only numbers";
         isValid = false;
       }
-      if (
-        formData.phone &&
-        (formData.phone.length < 10 || formData.phone.length > 15)
-      ) {
-        newErrors.phone = "Must be between 10-15 digits";
-        isValid = false;
-      } else if (formData.phone && !/^\d+$/.test(formData.phone)) {
-        newErrors.phone = "Must contain only numbers";
-        isValid = false;
-      }
+      // if (
+      //   formData.phone &&
+      //   (formData.phone.length < 10 || formData.phone.length > 15)
+      // ) {
+      //   newErrors.phone = "Must be between 10-15 digits";
+      //   isValid = false;
+      // } else if (formData.phone && !/^\d+$/.test(formData.phone)) {
+      //   newErrors.phone = "Must contain only numbers";
+      //   isValid = false;
+      // }
       if (
         formData.email &&
         !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)
@@ -518,7 +517,7 @@ export default function CustomerForm() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Phone Number
+                    Unique Random Number
                   </label>
                   <input
                     type="tel"
@@ -527,7 +526,7 @@ export default function CustomerForm() {
                     }`}
                     value={formData.phone}
                     onChange={(e) => handleChange("phone", e.target.value)}
-                    placeholder="Enter phone number (11 digits)"
+                    placeholder="Enter Unique Random Number"
                     maxLength={15}
                   />
                   {errors.phone && (

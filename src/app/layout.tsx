@@ -2,6 +2,13 @@ import './globals.css';
 import QueryClientProvider from './providers';
 import RemoveExtensionAttrs from '@/components/RemoveExtensionAttrs';
 
+export const metadata = {
+  title: 'Naeem ISP',
+  description: 'A description for my page',
+};
+
+ 
+
 export default function RootLayout({
   children,
 }: {

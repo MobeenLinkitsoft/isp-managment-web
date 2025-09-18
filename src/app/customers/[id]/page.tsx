@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   ArrowLeftIcon,
   PencilIcon,
@@ -14,14 +14,15 @@ import {
   CreditCardIcon,
   CalendarIcon,
   IdentificationIcon,
-} from '@heroicons/react/24/outline';
-import { fetchCustomer, deleteCustomer } from '../../../lib/api/customer';
+  NumberedListIcon,
+} from "@heroicons/react/24/outline";
+import { fetchCustomer, deleteCustomer } from "../../../lib/api/customer";
 
 export default function CustomerDetail() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
-  
+
   const [customer, setCustomer] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -31,8 +32,8 @@ export default function CustomerDetail() {
         const customerData = await fetchCustomer(id);
         setCustomer(customerData);
       } catch (error) {
-        console.error('Error loading customer:', error);
-        alert('Failed to load customer data');
+        console.error("Error loading customer:", error);
+        alert("Failed to load customer data");
       } finally {
         setLoading(false);
       }
@@ -43,13 +44,13 @@ export default function CustomerDetail() {
 
   const handleDelete = async () => {
     if (!confirm(`Are you sure you want to delete ${customer?.name}?`)) return;
-    
+
     try {
       await deleteCustomer(id);
-      router.push('/customers');
+      router.push("/customers");
     } catch (error) {
-      console.error('Error deleting customer:', error);
-      alert('Failed to delete customer');
+      console.error("Error deleting customer:", error);
+      alert("Failed to delete customer");
     }
   };
 
@@ -65,8 +66,13 @@ export default function CustomerDetail() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Customer not found</h1>
-          <Link href="/customers" className="text-indigo-600 hover:text-indigo-900">
+          <h1 className="text-2xl font-bold text-gray-900">
+            Customer not found
+          </h1>
+          <Link
+            href="/customers"
+            className="text-indigo-600 hover:text-indigo-900"
+          >
             Back to Customers
           </Link>
         </div>
@@ -86,7 +92,7 @@ export default function CustomerDetail() {
             <ArrowLeftIcon className="w-5 h-5 mr-2" />
             Back to Customers
           </Link>
-          
+
           <div className="flex space-x-2">
             <Link
               href={`/customers/edit/${id}`}
@@ -114,24 +120,32 @@ export default function CustomerDetail() {
                 {customer.name.charAt(0).toUpperCase()}
               </span>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">{customer.name}</h1>
-            <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
-              customer.isActive
-                ? 'bg-green-100 text-green-800'
-                : 'bg-red-100 text-red-800'
-            }`}>
-              {customer.isActive ? 'Active' : 'Inactive'}
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              {customer.name}
+            </h1>
+            <span
+              className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+                customer.isActive
+                  ? "bg-green-100 text-green-800"
+                  : "bg-red-100 text-red-800"
+              }`}
+            >
+              {customer.isActive ? "Active" : "Inactive"}
             </span>
           </div>
 
           {/* Personal Information */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div>
-              <h2 className="text-lg font-semibold mb-4">Personal Information</h2>
+              <h2 className="text-lg font-semibold mb-4">
+                Personal Information
+              </h2>
               <div className="space-y-3">
                 <div className="flex items-center">
                   <IdentificationIcon className="w-5 h-5 text-gray-400 mr-3" />
-                  <span className="text-gray-600">{customer.nationalId || 'N/A'}</span>
+                  <span className="text-gray-600">
+                    {customer.nationalId || "N/A"}
+                  </span>
                 </div>
                 <div className="flex items-center">
                   <PhoneIcon className="w-5 h-5 text-gray-400 mr-3" />
@@ -149,6 +163,12 @@ export default function CustomerDetail() {
                     <span className="text-gray-600">{customer.address}</span>
                   </div>
                 )}
+                {customer.phone && (
+                  <div className="flex items-center">
+                    <NumberedListIcon className="w-5 h-5 text-gray-400 mr-3" />
+                    <span className="text-gray-600">{customer.phone}</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -158,17 +178,23 @@ export default function CustomerDetail() {
               <div className="space-y-3">
                 <div className="flex items-center">
                   <WifiIcon className="w-5 h-5 text-gray-400 mr-3" />
-                  <span className="text-gray-600">{customer.connectionType?.name || 'N/A'}</span>
+                  <span className="text-gray-600">
+                    {customer.connectionType?.name || "N/A"}
+                  </span>
                 </div>
                 <div className="flex items-center">
                   <CreditCardIcon className="w-5 h-5 text-gray-400 mr-3" />
-                  <span className="text-gray-600">{customer.plan?.name || 'N/A'} - Rs{customer.plan?.price || '0'}</span>
+                  <span className="text-gray-600">
+                    {customer.plan?.name || "N/A"} - Rs
+                    {customer.plan?.price || "0"}
+                  </span>
                 </div>
                 {customer.registrationDate && (
                   <div className="flex items-center">
                     <CalendarIcon className="w-5 h-5 text-gray-400 mr-3" />
                     <span className="text-gray-600">
-                      Registered: {new Date(customer.registrationDate).toLocaleDateString()}
+                      Registered:{" "}
+                      {new Date(customer.registrationDate).toLocaleDateString()}
                     </span>
                   </div>
                 )}

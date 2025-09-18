@@ -29,6 +29,7 @@ import {
   PaymentStats,
 } from "../../lib/api/payments";
 import { fetchEmployees } from "../../lib/api/employees";
+import { getCurrentUser } from "../../lib/storage";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -70,6 +71,16 @@ const paymentMethods = [
   },
 ];
 
+interface User {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+  isActive: boolean;
+  avatar?: string;
+}
+
 export default function KhataPage() {
   const router = useRouter();
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -96,43 +107,94 @@ export default function KhataPage() {
   const [showMethodDropdown, setShowMethodDropdown] = useState(false);
 
   // Date range state
-  const now = new Date();
-  const [tempStartDate, setTempStartDate] = useState<string>(
-    new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0]
-  );
-  const [tempEndDate, setTempEndDate] = useState<string>(
-    new Date(now.getFullYear(), now.getMonth() + 1, 0)
-      .toISOString()
-      .split("T")[0]
-  );
-  const [startDate, setStartDate] = useState<string>(tempStartDate);
-  const [endDate, setEndDate] = useState<string>(tempEndDate);
+const now = new Date();
+
+const formatLocalDate = (d: Date) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+
+// first and last day of current month (local time)
+const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+const lastOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+// use lazy initializers so values are computed once
+const [tempStartDate, setTempStartDate] = useState<string>(() =>
+  formatLocalDate(firstOfMonth)
+);
+const [tempEndDate, setTempEndDate] = useState<string>(() =>
+  formatLocalDate(lastOfMonth)
+);
+
+const [startDate, setStartDate] = useState<string>(tempStartDate);
+const [endDate, setEndDate] = useState<string>(tempEndDate);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const user = await getCurrentUser();
+        if (user) {
+          setCurrentUser(user);
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      }
+    };
+    fetchUserData();
+  }, []);
+
+  // const user = getCurrentUser();
+  // const userData = user ? JSON.parse(user) : null;
+  // const isAdmin = userData?.role === "admin";
+  // const currentEmployeeId = userData?.id;
 
   useEffect(() => {
     loadData();
-  }, [startDate, endDate]);
+  }, [startDate, endDate,currentUser]);
+
+  const filterPaymentsByRole = (paymentsData: Payment[]) => {
+    if (currentUser?.role === "admin") {
+      return paymentsData; // Admin sees all payments
+    } else {
+      // Employee sees only payments they created or received
+      return paymentsData.filter(
+        (payment) => payment.customer?.addedBy === currentUser?.id
+      );
+    }
+  };
 
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [paymentsData, employeesData] = await Promise.all([
-        fetchPayments(startDate, endDate),
-        fetchEmployees(),
-      ]);
+      // const [paymentsData] = await Promise.all([
+      //   fetchPayments(startDate, endDate),
+      //   // fetchEmployees(),
+      // ]);
+      const paymentsData = await fetchPayments(startDate, endDate);
+      const filteredPaymentsData = filterPaymentsByRole(paymentsData.data);
 
-      setPayments(paymentsData.data);
-      setStats({
-        totalAmount: paymentsData.totalAmount || 0,
-        paidAmount: paymentsData.paidAmount || 0,
-        pendingAmount: paymentsData.pendingAmount || 0,
-        totalRecords: paymentsData.count || 0,
-        paidRecords: paymentsData.data.filter((p) => p.status === "paid")
-          .length,
-        pendingRecords: paymentsData.data.filter((p) => p.status === "pending")
-          .length,
-      });
-      setEmployees(employeesData);
+      setPayments(filteredPaymentsData);
+
+      if (currentUser?.role === "admin") {
+        const employeesResponse = await fetchEmployees();
+        setEmployees(employeesResponse);
+      }
+
+      // setStats({
+      //   totalAmount: filteredPaymentsData.totalAmount || 0,
+      //   paidAmount: filteredPaymentsData.paidAmount || 0,
+      //   pendingAmount: filteredPaymentsData.pendingAmount || 0,
+      //   totalRecords: filteredPaymentsData.count || 0,
+      //   paidRecords: filteredPaymentsData.data.filter((p) => p.status === "paid")
+      //     .length,
+      //   pendingRecords: filteredPaymentsData.data.filter((p) => p.status === "pending")
+      //     .length,
+      // });
+      // setEmployees(employeesData);
     } catch (error) {
       console.error("Error loading data:", error);
       alert("Failed to load payments data");
@@ -413,9 +475,7 @@ export default function KhataPage() {
                 <p className="text-red-100 text-sm font-medium">
                   Total Records
                 </p>
-                <h3 className="text-2xl font-bold mt-1">
-                  {payments?.length}
-                </h3>
+                <h3 className="text-2xl font-bold mt-1">{payments?.length}</h3>
               </div>
               <ClockIcon className="w-8 h-8 text-red-200" />
             </div>

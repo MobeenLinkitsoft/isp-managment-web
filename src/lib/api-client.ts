@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { getAccessToken } from './storage';
 
+// const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://35.173.229.177:1337';
 const BASE_URL = process.env.NEXT_PUBLIC_API_UR2L || 'http://35.173.229.177:1337';
 
 const apiClient = axios.create({

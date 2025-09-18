@@ -12,6 +12,17 @@ import {
   ClockIcon,
 } from '@heroicons/react/24/outline';
 import { fetchConnectionType, deleteConnectionType, ConnectionType } from '../../../lib/api/connections';
+import { getCurrentUser } from '../../../lib/storage'; // ✅ Import current user
+
+interface User {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+  isActive: boolean;
+  avatar?: string;
+}
 
 export default function ConnectionDetail() {
   const params = useParams();
@@ -21,6 +32,7 @@ export default function ConnectionDetail() {
   const [connection, setConnection] = useState<ConnectionType | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null); // ✅ Track user
 
   useEffect(() => {
     const loadConnection = async () => {
@@ -35,7 +47,17 @@ export default function ConnectionDetail() {
       }
     };
 
+    const fetchUser = async () => {
+      try {
+        const user = await getCurrentUser();
+        if (user) setCurrentUser(user);
+      } catch (err) {
+        console.error('Failed to fetch user:', err);
+      }
+    };
+
     loadConnection();
+    fetchUser();
   }, [id]);
 
   const handleDelete = async () => {
@@ -90,27 +112,30 @@ export default function ConnectionDetail() {
             Back to Connections
           </Link>
           
-          <div className="flex space-x-2">
-            <Link
-              href={`/connections/edit/${id}`}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center transition-colors"
-            >
-              <PencilIcon className="w-4 h-4 mr-2" />
-              Edit
-            </Link>
-            <button
-              onClick={handleDelete}
-              disabled={deleting}
-              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 flex items-center disabled:opacity-50 transition-colors"
-            >
-              {deleting ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-              ) : (
-                <TrashIcon className="w-4 h-4 mr-2" />
-              )}
-              Delete
-            </button>
-          </div>
+          {/* ✅ Only show Edit & Delete for admin */}
+          {currentUser?.role === 'admin' && (
+            <div className="flex space-x-2">
+              <Link
+                href={`/connections/edit/${id}`}
+                className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center transition-colors"
+              >
+                <PencilIcon className="w-4 h-4 mr-2" />
+                Edit
+              </Link>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 flex items-center disabled:opacity-50 transition-colors"
+              >
+                {deleting ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                ) : (
+                  <TrashIcon className="w-4 h-4 mr-2" />
+                )}
+                Delete
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Connection Card */}
