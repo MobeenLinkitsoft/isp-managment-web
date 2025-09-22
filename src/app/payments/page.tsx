@@ -107,29 +107,29 @@ export default function KhataPage() {
   const [showMethodDropdown, setShowMethodDropdown] = useState(false);
 
   // Date range state
-const now = new Date();
+  const now = new Date();
 
-const formatLocalDate = (d: Date) => {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-};
+  const formatLocalDate = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
 
-// first and last day of current month (local time)
-const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-const lastOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  // first and last day of current month (local time)
+  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
-// use lazy initializers so values are computed once
-const [tempStartDate, setTempStartDate] = useState<string>(() =>
-  formatLocalDate(firstOfMonth)
-);
-const [tempEndDate, setTempEndDate] = useState<string>(() =>
-  formatLocalDate(lastOfMonth)
-);
+  // use lazy initializers so values are computed once
+  const [tempStartDate, setTempStartDate] = useState<string>(() =>
+    formatLocalDate(firstOfMonth)
+  );
+  const [tempEndDate, setTempEndDate] = useState<string>(() =>
+    formatLocalDate(lastOfMonth)
+  );
 
-const [startDate, setStartDate] = useState<string>(tempStartDate);
-const [endDate, setEndDate] = useState<string>(tempEndDate);
+  const [startDate, setStartDate] = useState<string>(tempStartDate);
+  const [endDate, setEndDate] = useState<string>(tempEndDate);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
@@ -154,7 +154,7 @@ const [endDate, setEndDate] = useState<string>(tempEndDate);
 
   useEffect(() => {
     loadData();
-  }, [startDate, endDate,currentUser]);
+  }, [startDate, endDate, currentUser]);
 
   const filterPaymentsByRole = (paymentsData: Payment[]) => {
     if (currentUser?.role === "admin") {
@@ -297,6 +297,66 @@ const [endDate, setEndDate] = useState<string>(tempEndDate);
       year: "numeric",
     });
   };
+
+  const handlePrint = (payment: Payment) => {
+    const printDate = new Date().toLocaleDateString("en-GB"); // dd/mm/yyyy
+
+    const printContent = `
+    <div style="width:58mm;font-size:12px;">
+      <h2 style="text-align:center; margin:0; font-weight:bold;">
+        NAEEM INTERNET SERVICE
+      </h2>
+      <h3 style="text-align:center; margin:4px 0;">Payment Receipt</h3>
+  
+        <div><strong>Customer:</strong> ${payment.customer.name}</div>
+        <br/>
+        <div><strong>Date:</strong> ${printDate}</div>
+       
+      <hr />
+      <table style="width:100%; font-size:12px; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th style="text-align:left; font-weight:bold;">Package</th>
+            <th style="text-align:right; font-weight:bold;">Days</th>
+            <th style="text-align:right; font-weight:bold;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>${payment.plan.name}</td>
+            <td style="text-align:right;">30</td>
+            <td style="text-align:right;">Rs ${payment.amount.toFixed(2)}</td>
+          </tr>
+        </tbody>
+      </table>
+      <hr />
+      <table style="width:100%; font-size:12px;">
+        <tr>
+          <td colspan="2" style="font-weight:bold;">Total</td>
+          <td style="text-align:right; font-weight:bold;">Rs ${payment.amount.toFixed(2)}</td>
+        </tr>
+      </table>
+      <hr />
+      <p style="text-align:center; margin:8px 0;">Thank you!</p>
+    </div>
+  `;
+
+    const printWindow = window.open("", "_blank", "width=400,height=600");
+    if (printWindow) {
+      printWindow.document.open();
+      printWindow.document.write(`
+      <html>
+        <head><title>Receipt</title></head>
+        <body onload="window.print(); window.close();">
+          ${printContent}
+        </body>
+      </html>
+    `);
+      printWindow.document.close();
+    }
+  };
+
+
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -565,13 +625,12 @@ const [endDate, setEndDate] = useState<string>(tempEndDate);
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
-                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              payment.status === "paid"
-                                ? "bg-green-100 text-green-800"
-                                : payment.status === "pending"
+                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${payment.status === "paid"
+                              ? "bg-green-100 text-green-800"
+                              : payment.status === "pending"
                                 ? "bg-yellow-100 text-yellow-800"
                                 : "bg-red-100 text-red-800"
-                            }`}
+                              }`}
                           >
                             {payment.status.toUpperCase()}
                           </span>
@@ -589,11 +648,10 @@ const [endDate, setEndDate] = useState<string>(tempEndDate);
                                 setShowPaymentModal(true);
                               }}
                               disabled={payment.status === "paid"}
-                              className={`p-1 rounded ${
-                                payment.status === "paid"
-                                  ? "text-gray-400 cursor-not-allowed"
-                                  : "text-indigo-600 hover:text-indigo-900"
-                              }`}
+                              className={`p-1 rounded ${payment.status === "paid"
+                                ? "text-gray-400 cursor-not-allowed"
+                                : "text-indigo-600 hover:text-indigo-900"
+                                }`}
                               title={
                                 payment.status === "paid"
                                   ? "Already paid"
@@ -609,6 +667,16 @@ const [endDate, setEndDate] = useState<string>(tempEndDate);
                             >
                               <EyeIcon className="w-5 h-5" />
                             </Link>
+                            {payment.status === "paid" && (
+                              <button
+                                onClick={() => handlePrint(payment)}
+                                className="text-green-600 hover:text-green-900 p-1"
+                                title="Print Payment"
+                              >
+                                🖨️
+                              </button>
+                            )}
+
                           </div>
                         </td>
                       </tr>

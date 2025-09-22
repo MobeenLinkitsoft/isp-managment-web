@@ -3,11 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ArrowLeftIcon,
   ArrowLeftEndOnRectangleIcon,
-  CogIcon,
-  BellIcon,
-  ShieldCheckIcon,
+  PrinterIcon,
 } from "@heroicons/react/24/outline";
 import { getCurrentUser } from "../../lib/storage";
 import { logoutUser } from "../../lib/auth";
@@ -49,17 +46,49 @@ export default function SettingsPage() {
     }
   };
 
-  const handleBack = () => {
-    router.back();
-  };
+  const handlePrint = () => {
+    const printContent = `
+      <div style=" width: 58mm;">
+        <h3 style="text-align:center; ">Naeem Internet Services</h3> 
+        <p style="text-align:center; ">Kamalia, Pakistan</p>
+        <hr />
+        <p>Date: ${new Date().toLocaleString()}</p>
+        <p>Cashier: ${currentUser?.firstName || "Admin"}</p>
+        <hr />
+        <table style="width:100%; font-size:14px; border-collapse: collapse;">
+          <tr>
+            <td>Item A</td><td style="text-align:right;">Rs 150</td>
+          </tr>
+          <tr>
+            <td>Item B</td><td style="text-align:right;">Rs 250</td>
+          </tr>
+          <tr>
+            <td>Item C</td><td style="text-align:right;">Rs 100</td>
+          </tr>
+        </table>
+        <hr />
+        <p style="text-align:right; font-weight:bold;">Total: Rs 500</p>
+        <p style="text-align:center;">Thank you for shopping!</p>
+        <p style="text-align:center; font-size:12px;">Powered by Tecxist</p>
+      </div>
+    `;
 
-  //   if (isLoading) {
-  //     return (
-  //       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-  //         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-  //       </div>
-  //     );
-  //   }
+    const printWindow = window.open("", "_blank", "width=400,height=600");
+    if (printWindow) {
+      printWindow.document.open();
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Receipt</title>
+          </head>
+          <body onload="window.print(); window.close();">
+            ${printContent}
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    }
+  };
 
   if (!currentUser) {
     return (
@@ -87,7 +116,7 @@ export default function SettingsPage() {
           </h1>
         </div>
 
-        {/* Glass Profile Card */}
+        {/* Profile Card */}
         <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 p-8 mb-8">
           <div className="flex flex-col items-center">
             {/* Avatar */}
@@ -101,9 +130,8 @@ export default function SettingsPage() {
                 </div>
               </div>
               <div
-                className={`absolute bottom-2 right-2 w-6 h-6 rounded-full border-2 border-white ${
-                  currentUser.isActive ? "bg-green-500" : "bg-gray-400"
-                }`}
+                className={`absolute bottom-2 right-2 w-6 h-6 rounded-full border-2 border-white ${currentUser.isActive ? "bg-green-500" : "bg-gray-400"
+                  }`}
               />
             </div>
 
@@ -111,38 +139,18 @@ export default function SettingsPage() {
             <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">
               {currentUser.firstName} {currentUser.lastName}
             </h2>
-
-            <div className="w-full max-w-md space-y-4 mt-6">
-              <div className="flex justify-between items-center py-3 border-b border-gray-200">
-                <span className="text-gray-600 font-medium">Role:</span>
-                <span className="text-gray-900 font-semibold">
-                  {currentUser.role}
-                </span>
-              </div>
-
-              <div className="flex justify-between items-center py-3 border-b border-gray-200">
-                <span className="text-gray-600 font-medium">Email:</span>
-                <span className="text-gray-900 font-semibold">
-                  {currentUser.email}
-                </span>
-              </div>
-
-              <div className="flex justify-between items-center py-3 border-b border-gray-200">
-                <span className="text-gray-600 font-medium">Status:</span>
-                <span
-                  className={`font-semibold ${
-                    currentUser.isActive ? "text-green-600" : "text-red-600"
-                  }`}
-                >
-                  {currentUser.isActive ? "Active" : "Inactive"}
-                </span>
-              </div>
-            </div>
           </div>
         </div>
 
-     
-    
+        {/* Print Receipt Button */}
+        <button
+          onClick={handlePrint}
+          className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-4 rounded-xl shadow-lg hover:from-green-600 hover:to-green-700 transition-all duration-200 flex items-center justify-center mb-4"
+        >
+          <PrinterIcon className="w-5 h-5 mr-2" />
+          Print Test Receipt
+        </button>
+
         {/* Logout Button */}
         <button
           onClick={handleLogout}
@@ -152,6 +160,7 @@ export default function SettingsPage() {
           Logout
         </button>
       </div>
+
       {isLoading && (
         <div className="fixed inset-0 bg-[rgba(0,0,0,0.8)] bg-opacity-20 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-lg p-6 flex flex-col items-center">

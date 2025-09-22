@@ -294,7 +294,7 @@ export default function InvoicePreview() {
     if (!invoiceRef.current) return;
 
     const printContent = invoiceRef.current.innerHTML;
-    
+
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
       alert("Please allow pop-ups for printing");
@@ -348,7 +348,7 @@ export default function InvoicePreview() {
         </body>
       </html>
     `);
-    
+
     printWindow.document.close();
   };
 
@@ -359,6 +359,66 @@ export default function InvoicePreview() {
       </div>
     );
   }
+
+
+  // Print compact thermal receipt
+  const handlePrintReceipt = () => {
+    if (!invoiceData) return;
+
+    const printContent = `
+    <div style="width:58mm; font-family: monospace; font-size:12px;">
+      <h3 style="text-align:center; margin:0;">Naeem Internet Services</h3>
+      <p style="text-align:center; margin:0;">Kamalia, Pakistan</p>
+      <hr />
+      <p style="margin:4px 0;">Date: ${invoiceData.date}</p>
+      <p style="margin:4px 0;">Invoice #: ${invoiceData.invoiceNumber}</p>
+      <p style="margin:4px 0;">Customer: ${invoiceData.customerName}</p>
+      <hr />
+      <table style="width:100%; font-size:12px; border-collapse: collapse;">
+        <tbody>
+          <tr>
+            <td>Service Charges</td>
+            <td style="text-align:right;">Rs ${invoiceData.serviceCharges.toFixed(2)}</td>
+          </tr>
+          <tr>
+            <td>Package Charges</td>
+            <td style="text-align:right;">Rs ${invoiceData.packageCharges.toFixed(2)}</td>
+          </tr>
+          ${invoiceData.inventoryItems.map(
+      (item) => `
+              <tr>
+                <td>${item.name}</td>
+                <td style="text-align:right;">Rs ${item.price.toFixed(2)}</td>
+              </tr>
+            `
+    ).join("")}
+        </tbody>
+      </table>
+      <hr />
+      <p style="text-align:right; font-weight:bold;">Total: Rs ${invoiceData.total}</p>
+      <hr />
+      <p style="text-align:center; margin:8px 0;">Thank you for your business!</p>
+      <p style="text-align:center; font-size:11px;">Powered by Tecxist</p>
+    </div>
+  `;
+
+    const printWindow = window.open("", "_blank", "width=400,height=600");
+    if (printWindow) {
+      printWindow.document.open();
+      printWindow.document.write(`
+      <html>
+        <head>
+          <title>Receipt</title>
+        </head>
+        <body onload="window.print(); window.close();">
+          ${printContent}
+        </body>
+      </html>
+    `);
+      printWindow.document.close();
+    }
+  };
+
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -388,6 +448,14 @@ export default function InvoicePreview() {
               <PrinterIcon className="w-5 h-5 mr-2" />
               Print
             </button>
+            <button
+              onClick={handlePrintReceipt}
+              className="flex items-center px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              <PrinterIcon className="w-5 h-5 mr-2" />
+              Print Receipt
+            </button>
+
             <button
               onClick={downloadPDF}
               className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
