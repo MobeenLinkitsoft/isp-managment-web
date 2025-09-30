@@ -18,7 +18,7 @@ export default function LoginScreen() {
     setError('');
 
     try {
-      
+
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -56,8 +56,8 @@ export default function LoginScreen() {
             </svg>
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Welcome Back, Naeem ISP
-          </h2> 
+            Welcome Back, Login.Me ISP
+          </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             Sign in to your account
           </p>
@@ -69,7 +69,7 @@ export default function LoginScreen() {
               {error}
             </div>
           )}
-          
+
           <div className="space-y-4">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">

@@ -47,31 +47,81 @@ export default function SettingsPage() {
   };
 
   const handlePrint = () => {
+    const printDate = new Date().toLocaleDateString("en-GB"); // dd/mm/yyyy
+    const formattedActivationDate = new Date().toLocaleDateString("en-GB");
+
     const printContent = `
-      <div style=" width: 58mm;">
-        <h3 style="text-align:center; ">Naeem Internet Services</h3> 
-        <p style="text-align:center; ">Kamalia, Pakistan</p>
-        <hr />
-        <p>Date: ${new Date().toLocaleString()}</p>
-        <p>Cashier: ${currentUser?.firstName || "Admin"}</p>
-        <hr />
-        <table style="width:100%; font-size:14px; border-collapse: collapse;">
-          <tr>
-            <td>Item A</td><td style="text-align:right;">Rs 150</td>
-          </tr>
-          <tr>
-            <td>Item B</td><td style="text-align:right;">Rs 250</td>
-          </tr>
-          <tr>
-            <td>Item C</td><td style="text-align:right;">Rs 100</td>
-          </tr>
-        </table>
-        <hr />
-        <p style="text-align:right; font-weight:bold;">Total: Rs 500</p>
-        <p style="text-align:center;">Thank you for shopping!</p>
-        <p style="text-align:center; font-size:12px;">Powered by Tecxist</p>
+    <div style="width:58mm;font-size:12px;font-family:Arial,sans-serif;line-height:1.4;">
+      <!-- Logo and Header -->
+      <div style="text-align:center; margin-bottom:8px;">
+        <img src="/assets/logo.png" alt="Logo" style="max-width:150px;height:auto;margin:0 auto 1px;">
+        <h3 style="margin:2px 0;font-weight:bold;font-size:14px;">Payment Receipt</h3>
       </div>
-    `;
+      
+      <hr style="border:none;border-top:1px solid #000;margin:4px 0;" />
+      
+      <!-- Customer Details -->
+      <div style="margin:4px 0;">
+        <div><strong>Date:</strong> ${printDate}</div>
+        <div><strong>Customer:</strong> Test Customer</div>
+        <div><strong>Phone:</strong> 0300-1234567</div>
+        <div><strong>Activation Date:</strong> ${formattedActivationDate}</div>
+        <div><strong>Cashier:</strong> ${currentUser?.firstName || "Admin"}</div>
+      </div>
+      
+      <hr style="border:none;border-top:1px dashed #000;margin:4px 0;" />
+      
+      <!-- Package Details Table -->
+      <table style="width:100%;font-size:11px;border-collapse:collapse;margin:4px 0;">
+        <thead>
+          <tr>
+            <th style="text-align:left;font-weight:bold;padding:2px;">Package</th>
+            <th style="text-align:center;font-weight:bold;padding:2px;">Days</th>
+            <th style="text-align:right;font-weight:bold;padding:2px;">Price</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding:2px;">Basic Internet</td>
+            <td style="text-align:center;padding:2px;">30</td>
+            <td style="text-align:right;padding:2px;">Rs 1500.00</td>
+          </tr>
+          <tr>
+            <td style="padding:2px;">Installation</td>
+            <td style="text-align:center;padding:2px;">1</td>
+            <td style="text-align:right;padding:2px;">Rs 500.00</td>
+          </tr>
+        </tbody>
+      </table>
+      
+      <hr style="border:none;border-top:1px dashed #000;margin:4px 0;" />
+      
+      <!-- Total -->
+      <table style="width:100%;font-size:12px;">
+        <tr>
+          <td style="font-weight:bold;">Total Amount</td>
+          <td style="text-align:right;font-weight:bold;">Rs 2000.00</td>
+        </tr>
+      </table>
+      
+      <hr style="border:none;border-top:1px dashed #000;margin:4px 0;" />
+      
+      <!-- Success Message -->
+      <div style="text-align:center;margin:3px 0;">
+        <div style="font-weight:bold;margin:1px 0;font-size:13px;">Payment Successful</div>
+        <div style="margin:2px 0;">Thank you for the payment!</div>
+      </div>
+      
+      <hr style="border:none;border-top:1px solid #000;margin:4px 0;" />
+      
+      <!-- Office Address -->
+      <div style="text-align:center;font-size:12px;margin-top:4px;">
+        <div><strong>Office Address:</strong></div>
+        <div>Dehli chowk national laboratory</div>
+        <div><strong>Helpline:</strong> 03336881973</div>
+      </div>
+    </div>
+  `;
 
     const printWindow = window.open("", "_blank", "width=400,height=600");
     if (printWindow) {
@@ -80,6 +130,12 @@ export default function SettingsPage() {
         <html>
           <head>
             <title>Receipt</title>
+            <style>
+              @media print {
+                body { margin: 0; padding: 0; }
+                div { box-sizing: border-box; }
+              }
+            </style>
           </head>
           <body onload="window.print(); window.close();">
             ${printContent}
@@ -139,6 +195,10 @@ export default function SettingsPage() {
             <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">
               {currentUser.firstName} {currentUser.lastName}
             </h2>
+            <p className="text-gray-600 mb-1">{currentUser.email}</p>
+            <p className="text-sm text-gray-500 capitalize mb-4">
+              {currentUser.role} • {currentUser.isActive ? "Active" : "Inactive"}
+            </p>
           </div>
         </div>
 

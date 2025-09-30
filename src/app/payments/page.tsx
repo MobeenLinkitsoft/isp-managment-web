@@ -133,6 +133,11 @@ export default function KhataPage() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
+  // Package activation date modal state
+  const [showActivationDateModal, setShowActivationDateModal] = useState(false);
+  const [activationDate, setActivationDate] = useState<string>(() => formatLocalDate(new Date()));
+  const [paymentForPrint, setPaymentForPrint] = useState<Payment | null>(null);
+
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -146,11 +151,6 @@ export default function KhataPage() {
     };
     fetchUserData();
   }, []);
-
-  // const user = getCurrentUser();
-  // const userData = user ? JSON.parse(user) : null;
-  // const isAdmin = userData?.role === "admin";
-  // const currentEmployeeId = userData?.id;
 
   useEffect(() => {
     loadData();
@@ -170,10 +170,6 @@ export default function KhataPage() {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      // const [paymentsData] = await Promise.all([
-      //   fetchPayments(startDate, endDate),
-      //   // fetchEmployees(),
-      // ]);
       const paymentsData = await fetchPayments(startDate, endDate);
       const filteredPaymentsData = filterPaymentsByRole(paymentsData.data);
 
@@ -183,18 +179,6 @@ export default function KhataPage() {
         const employeesResponse = await fetchEmployees();
         setEmployees(employeesResponse);
       }
-
-      // setStats({
-      //   totalAmount: filteredPaymentsData.totalAmount || 0,
-      //   paidAmount: filteredPaymentsData.paidAmount || 0,
-      //   pendingAmount: filteredPaymentsData.pendingAmount || 0,
-      //   totalRecords: filteredPaymentsData.count || 0,
-      //   paidRecords: filteredPaymentsData.data.filter((p) => p.status === "paid")
-      //     .length,
-      //   pendingRecords: filteredPaymentsData.data.filter((p) => p.status === "pending")
-      //     .length,
-      // });
-      // setEmployees(employeesData);
     } catch (error) {
       console.error("Error loading data:", error);
       alert("Failed to load payments data");
@@ -298,46 +282,79 @@ export default function KhataPage() {
     });
   };
 
-  const handlePrint = (payment: Payment) => {
+  const handlePrintClick = (payment: Payment) => {
+    setPaymentForPrint(payment);
+    setShowActivationDateModal(true);
+  };
+
+  const handlePrint = (payment: Payment, activationDate: string) => {
     const printDate = new Date().toLocaleDateString("en-GB"); // dd/mm/yyyy
+    const formattedActivationDate = new Date(activationDate).toLocaleDateString("en-GB");
 
     const printContent = `
-    <div style="width:58mm;font-size:12px;">
-      <h2 style="text-align:center; margin:0; font-weight:bold;">
-        NAEEM INTERNET SERVICE
-      </h2>
-      <h3 style="text-align:center; margin:4px 0;">Payment Receipt</h3>
-  
-        <div><strong>Customer:</strong> ${payment.customer.name}</div>
-        <br/>
+    <div style="width:58mm;font-size:12px;font-family:Arial,sans-serif;line-height:1.4;">
+      <!-- Logo and Header -->
+      <div style="text-align:center; margin-bottom:8px;">
+        <img src="/assets/logo.png" alt="Logo" style="max-width:150px;height:auto;margin:0 auto 1px;">
+        <h3 style="margin:2px 0;font-weight:bold;font-size:14px;">Payment Receipt</h3>
+      </div>
+      
+      <hr style="border:none;border-top:1px solid #000;margin:4px 0;" />
+      
+      <!-- Customer Details -->
+      <div style="margin:4px 0;">
         <div><strong>Date:</strong> ${printDate}</div>
-       
-      <hr />
-      <table style="width:100%; font-size:12px; border-collapse: collapse;">
+        <div><strong>Customer:</strong> ${payment.customer.name}</div>
+        <div><strong>Phone:</strong> ${payment.customer.mobile}</div>
+        <div><strong>Activation Date:</strong> ${formattedActivationDate}</div>
+      </div>
+      
+      <hr style="border:none;border-top:1px dashed #000;margin:4px 0;" />
+      
+      <!-- Package Details Table -->
+      <table style="width:100%;font-size:11px;border-collapse:collapse;margin:4px 0;">
         <thead>
           <tr>
-            <th style="text-align:left; font-weight:bold;">Package</th>
-            <th style="text-align:right; font-weight:bold;">Days</th>
-            <th style="text-align:right; font-weight:bold;">Amount</th>
+            <th style="text-align:left;font-weight:bold;padding:2px;"></th>
+            <th style="text-align:center;font-weight:bold;padding:2px;">Days</th>
+            <th style="text-align:right;font-weight:bold;padding:2px;">Price</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td>${payment.plan.name}</td>
-            <td style="text-align:right;">30</td>
-            <td style="text-align:right;">Rs ${payment.amount.toFixed(2)}</td>
+            <td style="padding:2px;"></td>
+            <td style="text-align:center;padding:2px;">30</td>
+            <td style="text-align:right;padding:2px;">Rs ${payment.amount.toFixed(2)}</td>
           </tr>
         </tbody>
       </table>
-      <hr />
-      <table style="width:100%; font-size:12px;">
+      
+      <hr style="border:none;border-top:1px dashed #000;margin:4px 0;" />
+      
+      <!-- Total -->
+      <table style="width:100%;font-size:12px;">
         <tr>
-          <td colspan="2" style="font-weight:bold;">Total</td>
-          <td style="text-align:right; font-weight:bold;">Rs ${payment.amount.toFixed(2)}</td>
+          <td style="font-weight:bold;">Total Amount</td>
+          <td style="text-align:right;font-weight:bold;">Rs ${payment.amount.toFixed(2)}</td>
         </tr>
       </table>
-      <hr />
-      <p style="text-align:center; margin:8px 0;">Thank you!</p>
+      
+      <hr style="border:none;border-top:1px dashed #000;margin:4px 0;" />
+      
+      <!-- Success Message -->
+      <div style="text-align:center;margin:3px 0;">
+        <div style="font-weight:bold;margin:1px 0;font-size:13px;">Payment Successful</div>
+        <div style="margin:2px 0;">Thank you for the payment!</div>
+      </div>
+      
+      <hr style="border:none;border-top:1px solid #000;margin:4px 0;" />
+      
+      <!-- Office Address -->
+      <div style="text-align:center;font-size:12px;margin-top:4px;">
+        <div><strong>Office Address:</strong></div>
+        <div>Dehli chowk national laboratory</div>
+        <div><strong>Helpline:</strong> 03336881973</div>
+      </div>
     </div>
   `;
 
@@ -346,7 +363,14 @@ export default function KhataPage() {
       printWindow.document.open();
       printWindow.document.write(`
       <html>
-        <head><title>Receipt</title></head>
+        <head>
+          <title>Receipt - ${payment.customer.name}</title>
+          <style>
+            @media print {
+              body { margin: 0; padding: 0; }
+            }
+          </style>
+        </head>
         <body onload="window.print(); window.close();">
           ${printContent}
         </body>
@@ -354,9 +378,10 @@ export default function KhataPage() {
     `);
       printWindow.document.close();
     }
+
+    // Close the modal after printing
+    setShowActivationDateModal(false);
   };
-
-
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -669,14 +694,13 @@ export default function KhataPage() {
                             </Link>
                             {payment.status === "paid" && (
                               <button
-                                onClick={() => handlePrint(payment)}
+                                onClick={() => handlePrintClick(payment)}
                                 className="text-green-600 hover:text-green-900 p-1"
                                 title="Print Payment"
                               >
                                 🖨️
                               </button>
                             )}
-
                           </div>
                         </td>
                       </tr>
@@ -887,6 +911,74 @@ export default function KhataPage() {
           </div>
         </div>
       )}
+
+      {/* Package Activation Date Modal */}
+      {showActivationDateModal && paymentForPrint && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-lg max-w-md w-full">
+            <div className="p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">
+                Set Package Activation Date
+              </h2>
+
+              {/* Customer Info */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                <div className="flex items-center">
+                  <div className="w-12 h-12 bg-indigo-600 rounded-full flex items-center justify-center mr-3">
+                    <UserIcon className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900">
+                      {paymentForPrint.customer.name}
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      {paymentForPrint.customer.mobile}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      Package: {paymentForPrint.plan.name}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Activation Date Input */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Package Activation Date
+                  </label>
+                  <input
+                    type="date"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    value={activationDate}
+                    onChange={(e) => setActivationDate(e.target.value)}
+                  />
+                  <p className="text-sm text-gray-500 mt-1">
+                    This date will be shown on the receipt as the package activation date.
+                  </p>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex space-x-3 mt-6">
+                <button
+                  onClick={() => setShowActivationDateModal(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handlePrint(paymentForPrint, activationDate)}
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                >
+                  Print Receipt
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isLoading && (
         <div className="fixed inset-0 bg-[rgba(0,0,0,0.5)] flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-lg p-6 flex flex-col items-center">

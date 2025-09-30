@@ -3,7 +3,7 @@ import QueryClientProvider from './providers';
 import RemoveExtensionAttrs from '@/components/RemoveExtensionAttrs';
 
 export const metadata = {
-  title: 'Naeem ISP',
+  title: 'Login.Me ISP',
   description: 'A description for my page',
 };
 

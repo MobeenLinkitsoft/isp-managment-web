@@ -360,45 +360,107 @@ export default function InvoicePreview() {
     );
   }
 
-
-  // Print compact thermal receipt
+  // Print enhanced thermal receipt
   const handlePrintReceipt = () => {
     if (!invoiceData) return;
 
+    const printDate = new Date().toLocaleDateString("en-GB");
+    const totalAmount = parseFloat(invoiceData.total);
+
     const printContent = `
-    <div style="width:58mm; font-family: monospace; font-size:12px;">
-      <h3 style="text-align:center; margin:0;">Naeem Internet Services</h3>
-      <p style="text-align:center; margin:0;">Kamalia, Pakistan</p>
-      <hr />
-      <p style="margin:4px 0;">Date: ${invoiceData.date}</p>
-      <p style="margin:4px 0;">Invoice #: ${invoiceData.invoiceNumber}</p>
-      <p style="margin:4px 0;">Customer: ${invoiceData.customerName}</p>
-      <hr />
-      <table style="width:100%; font-size:12px; border-collapse: collapse;">
+    <div style="width:58mm;font-size:12px;font-family:Arial,sans-serif;line-height:1.4;">
+      <!-- Logo and Header -->
+      <div style="text-align:center; margin-bottom:8px;">
+        <img src="/assets/logo.png" alt="Logo" style="max-width:150px;height:auto;margin:0 auto 1px;">
+        <h3 style="margin:2px 0;font-weight:bold;font-size:14px;">Invoice Receipt</h3>
+      </div>
+      
+      <hr style="border:none;border-top:1px solid #000;margin:4px 0;" />
+      
+      <!-- Invoice Details -->
+      <div style="margin:4px 0;">
+        <div><strong>Date:</strong> ${printDate}</div>
+        <div><strong>Invoice #:</strong> ${invoiceData.invoiceNumber}</div>
+        <div><strong>Customer:</strong> ${invoiceData.customerName}</div>
+      </div>
+      
+      <hr style="border:none;border-top:1px dashed #000;margin:4px 0;" />
+      
+      <!-- Service and Package Charges -->
+      <table style="width:100%;font-size:11px;border-collapse:collapse;margin:4px 0;">
         <tbody>
           <tr>
-            <td>Service Charges</td>
-            <td style="text-align:right;">Rs ${invoiceData.serviceCharges.toFixed(2)}</td>
+            <td style="padding:2px;">Service Charges:</td>
+            <td style="text-align:right;padding:2px;">Rs ${invoiceData.serviceCharges.toFixed(2)}</td>
           </tr>
           <tr>
-            <td>Package Charges</td>
-            <td style="text-align:right;">Rs ${invoiceData.packageCharges.toFixed(2)}</td>
+            <td style="padding:2px;">Package Charges:</td>
+            <td style="text-align:right;padding:2px;">Rs ${invoiceData.packageCharges.toFixed(2)}</td>
           </tr>
-          ${invoiceData.inventoryItems.map(
-      (item) => `
-              <tr>
-                <td>${item.name}</td>
-                <td style="text-align:right;">Rs ${item.price.toFixed(2)}</td>
-              </tr>
-            `
-    ).join("")}
         </tbody>
       </table>
-      <hr />
-      <p style="text-align:right; font-weight:bold;">Total: Rs ${invoiceData.total}</p>
-      <hr />
-      <p style="text-align:center; margin:8px 0;">Thank you for your business!</p>
-      <p style="text-align:center; font-size:11px;">Powered by Tecxist</p>
+      
+      <hr style="border:none;border-top:1px dashed #000;margin:4px 0;" />
+      
+      <!-- Items Table -->
+      <table style="width:100%;font-size:11px;border-collapse:collapse;margin:4px 0;">
+        <thead>
+          <tr>
+            <th style="text-align:left;font-weight:bold;padding:2px;border-bottom:1px solid #000;">Item</th>
+            <th style="text-align:center;font-weight:bold;padding:2px;border-bottom:1px solid #000;">Warranty</th>
+            <th style="text-align:right;font-weight:bold;padding:2px;border-bottom:1px solid #000;">Price</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${invoiceData.inventoryItems.map((item) => `
+            <tr>
+              <td style="padding:2px;border-bottom:1px solid #ddd;">${item.name}</td>
+              <td style="text-align:center;padding:2px;border-bottom:1px solid #ddd;">${item.warranty || '0'} days</td>
+              <td style="text-align:right;padding:2px;border-bottom:1px solid #ddd;">Rs ${item.price.toFixed(2)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+      
+      <hr style="border:none;border-top:1px dashed #000;margin:4px 0;" />
+      
+      <!-- Subtotal -->
+      <table style="width:100%;font-size:11px;margin:2px 0;">
+        <tr>
+          <td style="padding:1px;">Service & Package:</td>
+          <td style="text-align:right;padding:1px;">Rs ${(invoiceData.serviceCharges + invoiceData.packageCharges).toFixed(2)}</td>
+        </tr>
+        <tr>
+          <td style="padding:1px;">Items Total:</td>
+          <td style="text-align:right;padding:1px;">Rs ${invoiceData.inventoryItems.reduce((sum, item) => sum + item.price, 0).toFixed(2)}</td>
+        </tr>
+      </table>
+      
+      <hr style="border:none;border-top:1px dashed #000;margin:4px 0;" />
+      
+      <!-- Total -->
+      <table style="width:100%;font-size:12px;">
+        <tr>
+          <td style="font-weight:bold;">Total Amount:</td>
+          <td style="text-align:right;font-weight:bold;">Rs ${totalAmount.toFixed(2)}</td>
+        </tr>
+      </table>
+      
+      <hr style="border:none;border-top:1px dashed #000;margin:4px 0;" />
+      
+      <!-- Success Message -->
+      <div style="text-align:center;margin:3px 0;">
+        <div style="font-weight:bold;margin:1px 0;font-size:13px;">Thank you</div> 
+      </div>
+      
+      <hr style="border:none;border-top:1px solid #000;margin:4px 0;" />
+      
+      <!-- Office Address -->
+      <div style="text-align:center;font-size:12px;margin-top:4px;">
+        <div><strong>Office Address:</strong></div>
+        <div>Dehli chowk national laboratory</div>
+        <div><strong>Helpline:</strong> 03336881973</div>
+      </div>
     </div>
   `;
 
@@ -408,7 +470,12 @@ export default function InvoicePreview() {
       printWindow.document.write(`
       <html>
         <head>
-          <title>Receipt</title>
+          <title>Receipt - ${invoiceData.invoiceNumber}</title>
+          <style>
+            @media print {
+              body { margin: 0; padding: 0; }
+            }
+          </style>
         </head>
         <body onload="window.print(); window.close();">
           ${printContent}
@@ -418,7 +485,6 @@ export default function InvoicePreview() {
       printWindow.document.close();
     }
   };
-
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -446,7 +512,7 @@ export default function InvoicePreview() {
               className="flex items-center px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
             >
               <PrinterIcon className="w-5 h-5 mr-2" />
-              Print
+              Print Invoice
             </button>
             <button
               onClick={handlePrintReceipt}

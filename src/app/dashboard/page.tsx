@@ -321,7 +321,7 @@ export default function Dashboard() {
                 <Bars3Icon className="w-6 h-6" />
               </button>
               <div>
-                <p className="text-white text-xl">Welcome back, Naeem ISP</p>
+                <p className="text-white text-xl">Welcome back, Login.Me ISP</p>
                 <h1 className="text-white text-3xl font-bold">
                   {currentUser?.firstName || "User"}
                 </h1>
@@ -420,9 +420,8 @@ export default function Dashboard() {
                     </h3>
                     <div className="flex items-center mt-2">
                       <span
-                        className={`text-${
-                          stat.change.includes("+") ? "green" : "red"
-                        }-500 text-sm flex items-center`}
+                        className={`text-${stat.change.includes("+") ? "green" : "red"
+                          }-500 text-sm flex items-center`}
                       >
                         <ArrowTrendingUpIcon className="w-4 h-4 mr-1" />{" "}
                         {stat.change}
@@ -554,9 +553,8 @@ export default function Dashboard() {
                   },
                   {
                     label: "Avg Revenue/Customer",
-                    value: `Rs${
-                      dashboardData?.averageRevenuePerCustomer || "0"
-                    }`,
+                    value: `Rs${dashboardData?.averageRevenuePerCustomer || "0"
+                      }`,
                     color: "text-blue-600",
                   },
                   {
@@ -609,22 +607,20 @@ export default function Dashboard() {
                   >
                     <div className="flex items-center">
                       <div
-                        className={`p-2 rounded-full ${
-                          payment.status === "paid"
+                        className={`p-2 rounded-full ${payment.status === "paid"
                             ? "bg-green-100"
                             : payment.status === "pending"
-                            ? "bg-yellow-100"
-                            : "bg-red-100"
-                        }`}
+                              ? "bg-yellow-100"
+                              : "bg-red-100"
+                          }`}
                       >
                         <CreditCardIcon
-                          className={`w-4 h-4 ${
-                            payment.status === "paid"
+                          className={`w-4 h-4 ${payment.status === "paid"
                               ? "text-green-600"
                               : payment.status === "pending"
-                              ? "text-yellow-600"
-                              : "text-red-600"
-                          }`}
+                                ? "text-yellow-600"
+                                : "text-red-600"
+                            }`}
                         />
                       </div>
                       <div className="ml-3">
