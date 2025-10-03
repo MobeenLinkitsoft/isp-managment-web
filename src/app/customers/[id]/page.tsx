@@ -22,9 +22,17 @@ export default function CustomerDetail() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
-
   const [customer, setCustomer] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  const formatDate = (timestamp: number) => {
+    const date = new Date(timestamp * 1000);
+    return date.toLocaleDateString("en-US", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
 
   useEffect(() => {
     const loadCustomer = async () => {
@@ -61,6 +69,8 @@ export default function CustomerDetail() {
       </div>
     );
   }
+
+  console.log(".......", customer);
 
   if (!customer) {
     return (
@@ -189,12 +199,12 @@ export default function CustomerDetail() {
                     {customer.plan?.price || "0"}
                   </span>
                 </div>
-                {customer.registrationDate && (
+                {customer.connectionStartDate && (
                   <div className="flex items-center">
                     <CalendarIcon className="w-5 h-5 text-gray-400 mr-3" />
                     <span className="text-gray-600">
-                      Registered:{" "}
-                      {new Date(customer.registrationDate).toLocaleDateString()}
+                      Package Activation Date:{" "}
+                      {formatDate(customer.connectionStartDate)}
                     </span>
                   </div>
                 )}

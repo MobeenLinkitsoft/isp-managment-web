@@ -8,6 +8,7 @@ import {
   CheckIcon,
   WifiIcon,
   CreditCardIcon,
+  CalendarIcon,
 } from "@heroicons/react/24/outline";
 import { updateCustomer, fetchCustomer } from "../../../../lib/api/customer";
 import { fetchConnectionTypes } from "../../../../lib/api/connections";
@@ -24,7 +25,21 @@ interface FormData {
   phone: string;
   email: string;
   address: string;
+  connectionStartDate: string;
 }
+
+// Helper function to convert Unix timestamp to date string
+const unixTimestampToDateString = (timestamp: number): string => {
+  // Multiply by 1000 to convert seconds to milliseconds
+  const date = new Date(timestamp * 1000);
+  return date.toISOString().split("T")[0];
+};
+
+// Helper function to convert date string to Unix timestamp
+const dateStringToUnixTimestamp = (dateString: string): number => {
+  const date = new Date(dateString);
+  return Math.floor(date.getTime() / 1000);
+};
 
 export default function EditCustomer() {
   const router = useRouter();
@@ -36,6 +51,7 @@ export default function EditCustomer() {
   const [connectionTypes, setConnectionTypes] = useState<any[]>([]);
   const [packages, setPackages] = useState<any[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [originalPlan, setOriginalPlan] = useState("");
 
   const [formData, setFormData] = useState<FormData>({
     name: "",
@@ -48,6 +64,7 @@ export default function EditCustomer() {
     phone: "",
     email: "",
     address: "",
+    connectionStartDate: "",
   });
 
   useEffect(() => {
@@ -62,6 +79,34 @@ export default function EditCustomer() {
 
         setConnectionTypes(connectionTypesData);
         setPackages(packagesData);
+
+        // Convert Unix timestamp to date string for the form
+        let connectionStartDate = "";
+        if (customerData.connectionStartDate) {
+          // Check if it's already a Unix timestamp (number) or a string
+          if (typeof customerData.connectionStartDate === "number") {
+            connectionStartDate = unixTimestampToDateString(
+              customerData.connectionStartDate
+            );
+          } else if (typeof customerData.connectionStartDate === "string") {
+            // If it's already a string, check if it's a timestamp or ISO string
+            if (/^\d+$/.test(customerData.connectionStartDate)) {
+              // It's a string containing only numbers, treat as Unix timestamp
+              connectionStartDate = unixTimestampToDateString(
+                parseInt(customerData.connectionStartDate)
+              );
+            } else {
+              // It's probably an ISO string, use it directly
+              connectionStartDate = new Date(customerData.connectionStartDate)
+                .toISOString()
+                .split("T")[0];
+            }
+          }
+        } else {
+          // Default to today if no date is set
+          connectionStartDate = new Date().toISOString().split("T")[0];
+        }
+
         setFormData({
           name: customerData.name,
           username: customerData.username,
@@ -73,7 +118,9 @@ export default function EditCustomer() {
           phone: customerData.phone || "",
           email: customerData.email || "",
           address: customerData.address || "",
+          connectionStartDate: connectionStartDate,
         });
+        setOriginalPlan(customerData.plan?.id || "");
       } catch (error) {
         console.error("Error loading form data:", error);
         alert("Failed to load form data");
@@ -120,6 +167,11 @@ export default function EditCustomer() {
         if (!value) newErrors.connectionType = "Connection type is required";
         else delete newErrors.connectionType;
         break;
+      case "connectionStartDate":
+        if (!value)
+          newErrors.connectionStartDate = "Activation date is required";
+        else delete newErrors.connectionStartDate;
+        break;
       default:
         break;
     }
@@ -142,6 +194,7 @@ export default function EditCustomer() {
       "mobile",
       "plan",
       "connectionType",
+      "connectionStartDate",
     ];
 
     requiredFields.forEach((field) => {
@@ -161,33 +214,30 @@ export default function EditCustomer() {
 
     try {
       setSaving(true);
-      const apiData = { ...formData };
+
+      // Convert date string back to Unix timestamp for API
+      // const connectionStartDateTimestamp = formData.connectionStartDate
+      //   ? dateStringToUnixTimestamp(formData.connectionStartDate)
+      //   : null;
+
+      const apiData: any = {
+        ...formData,
+        connectionStartDate: formData.connectionStartDate
+          ? `${formData.connectionStartDate}T00:00:00`
+          : null,
+      };
 
       // Remove password if empty (keep current password)
       if (!apiData.password) {
         delete apiData.password;
       }
 
-      // Convert plan and connectionType to objects if they exist
-      const formattedData: any = { ...apiData };
-
-      if (formattedData.plan) {
-        const selectedPlan = packages.find((p) => p.id === formattedData.plan);
-        formattedData.plan = selectedPlan
-          ? { id: selectedPlan.id, name: selectedPlan.name }
-          : undefined;
+      // Only send plan if it's changed
+      if (formData.plan === originalPlan) {
+        delete apiData.plan;
       }
 
-      if (formattedData.connectionType) {
-        const selectedConnection = connectionTypes.find(
-          (ct) => ct.id === formattedData.connectionType
-        );
-        formattedData.connectionType = selectedConnection
-          ? { id: selectedConnection.id, name: selectedConnection.name }
-          : undefined;
-      }
-
-      await updateCustomer(id, formattedData);
+      await updateCustomer(id, apiData);
 
       router.push("/customers");
       router.refresh();
@@ -411,6 +461,32 @@ export default function EditCustomer() {
                 </select>
                 {errors.plan && (
                   <p className="text-red-500 text-sm mt-1">{errors.plan}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Package Activation Date *
+                </label>
+                <div className="relative">
+                  <input
+                    type="date"
+                    className={`w-full px-3 py-2 border rounded-md ${
+                      errors.connectionStartDate
+                        ? "border-red-500"
+                        : "border-gray-300"
+                    }`}
+                    value={formData.connectionStartDate}
+                    onChange={(e) =>
+                      handleChange("connectionStartDate", e.target.value)
+                    }
+                  />
+                  {/* <CalendarIcon className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" /> */}
+                </div>
+                {errors.connectionStartDate && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.connectionStartDate}
+                  </p>
                 )}
               </div>
             </div>

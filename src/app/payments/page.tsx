@@ -21,12 +21,15 @@ import {
   EyeIcon,
   DocumentCurrencyDollarIcon,
   CalendarDaysIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
 } from "@heroicons/react/24/outline";
 import {
   fetchPayments,
   markPaymentAsPaid,
   Payment,
   PaymentStats,
+  PaginationInfo,
 } from "../../lib/api/payments";
 import { fetchEmployees } from "../../lib/api/employees";
 import { getCurrentUser } from "../../lib/storage";
@@ -84,13 +87,15 @@ interface User {
 export default function KhataPage() {
   const router = useRouter();
   const [payments, setPayments] = useState<Payment[]>([]);
-  const [stats, setStats] = useState<PaymentStats>({
-    totalAmount: 0,
-    paidAmount: 0,
-    pendingAmount: 0,
-    totalRecords: 0,
-    paidRecords: 0,
-    pendingRecords: 0,
+  const [pagination, setPagination] = useState<PaginationInfo>({
+    currentPage: 1,
+    totalPages: 1,
+    totalCount: 0,
+    limit: ITEMS_PER_PAGE,
+    hasNextPage: false,
+    hasPrevPage: false,
+    nextPage: null,
+    prevPage: null,
   });
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -133,11 +138,6 @@ export default function KhataPage() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
-  // Package activation date modal state
-  const [showActivationDateModal, setShowActivationDateModal] = useState(false);
-  const [activationDate, setActivationDate] = useState<string>(() => formatLocalDate(new Date()));
-  const [paymentForPrint, setPaymentForPrint] = useState<Payment | null>(null);
-
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -154,7 +154,7 @@ export default function KhataPage() {
 
   useEffect(() => {
     loadData();
-  }, [startDate, endDate, currentUser]);
+  }, [startDate, endDate, currentUser, currentPage, statusFilter]);
 
   const filterPaymentsByRole = (paymentsData: Payment[]) => {
     if (currentUser?.role === "admin") {
@@ -170,10 +170,17 @@ export default function KhataPage() {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const paymentsData = await fetchPayments(startDate, endDate);
-      const filteredPaymentsData = filterPaymentsByRole(paymentsData.data);
-
+      const paymentsResponse = await fetchPayments(
+        startDate, 
+        endDate, 
+        currentPage, 
+        ITEMS_PER_PAGE,
+        statusFilter
+      );
+      
+      const filteredPaymentsData = filterPaymentsByRole(paymentsResponse.data);
       setPayments(filteredPaymentsData);
+      setPagination(paymentsResponse.pagination);
 
       if (currentUser?.role === "admin") {
         const employeesResponse = await fetchEmployees();
@@ -190,13 +197,26 @@ export default function KhataPage() {
 
   const handleRefresh = () => {
     setRefreshing(true);
+    setCurrentPage(1); // Reset to first page on refresh
     loadData();
   };
 
   const handleDateSearch = () => {
     setStartDate(tempStartDate);
     setEndDate(tempEndDate);
+    setCurrentPage(1); // Reset to first page when date changes
     setShowDatePicker(false);
+  };
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter]);
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+    // Scroll to top when page changes
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const totalAmount = payments.reduce(
@@ -208,8 +228,11 @@ export default function KhataPage() {
     0
   );
 
+  // Client-side search filtering
   const filteredPayments = useMemo(() => {
-    let filtered = payments.filter((payment) => {
+    if (!searchQuery) return payments;
+    
+    return payments.filter((payment) => {
       const matchesSearch =
         payment.customer.name
           .toLowerCase()
@@ -219,21 +242,9 @@ export default function KhataPage() {
           ?.toLowerCase()
           .includes(searchQuery.toLowerCase());
 
-      const matchesStatus =
-        statusFilter === "all" || payment.status === statusFilter;
-
-      return matchesSearch && matchesStatus;
+      return matchesSearch;
     });
-
-    return filtered;
-  }, [payments, searchQuery, statusFilter]);
-
-  // Pagination logic
-  const totalPages = Math.ceil(filteredPayments.length / ITEMS_PER_PAGE);
-  const currentItems = filteredPayments.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
+  }, [payments, searchQuery]);
 
   const handleUpdatePayment = async () => {
     if (!selectedPayment) return;
@@ -282,14 +293,8 @@ export default function KhataPage() {
     });
   };
 
-  const handlePrintClick = (payment: Payment) => {
-    setPaymentForPrint(payment);
-    setShowActivationDateModal(true);
-  };
-
-  const handlePrint = (payment: Payment, activationDate: string) => {
+  const handlePrint = (payment: Payment) => {
     const printDate = new Date().toLocaleDateString("en-GB"); // dd/mm/yyyy
-    const formattedActivationDate = new Date(activationDate).toLocaleDateString("en-GB");
 
     const printContent = `
     <div style="width:58mm;font-size:12px;font-family:Arial,sans-serif;line-height:1.4;">
@@ -306,7 +311,9 @@ export default function KhataPage() {
         <div><strong>Date:</strong> ${printDate}</div>
         <div><strong>Customer:</strong> ${payment.customer.name}</div>
         <div><strong>Phone:</strong> ${payment.customer.mobile}</div>
-        <div><strong>Activation Date:</strong> ${formattedActivationDate}</div>
+        <div><strong>Activation Date:</strong> ${formatDate(
+          payment.customer.connectionStartDate
+        )}</div>
       </div>
       
       <hr style="border:none;border-top:1px dashed #000;margin:4px 0;" />
@@ -324,7 +331,9 @@ export default function KhataPage() {
           <tr>
             <td style="padding:2px;"></td>
             <td style="text-align:center;padding:2px;">30</td>
-            <td style="text-align:right;padding:2px;">Rs ${payment.amount.toFixed(2)}</td>
+            <td style="text-align:right;padding:2px;">Rs ${payment.amount.toFixed(
+              2
+            )}</td>
           </tr>
         </tbody>
       </table>
@@ -335,7 +344,9 @@ export default function KhataPage() {
       <table style="width:100%;font-size:12px;">
         <tr>
           <td style="font-weight:bold;">Total Amount</td>
-          <td style="text-align:right;font-weight:bold;">Rs ${payment.amount.toFixed(2)}</td>
+          <td style="text-align:right;font-weight:bold;">Rs ${payment.amount.toFixed(
+            2
+          )}</td>
         </tr>
       </table>
       
@@ -378,9 +389,42 @@ export default function KhataPage() {
     `);
       printWindow.document.close();
     }
+  };
 
-    // Close the modal after printing
-    setShowActivationDateModal(false);
+  // Generate page numbers for pagination
+  const generatePageNumbers = () => {
+    const pages = [];
+    const totalPages = pagination.totalPages;
+    const currentPage = pagination.currentPage;
+    
+    // Always show first page
+    pages.push(1);
+    
+    // Calculate range around current page
+    let startPage = Math.max(2, currentPage - 1);
+    let endPage = Math.min(totalPages - 1, currentPage + 1);
+    
+    // Add ellipsis after first page if needed
+    if (startPage > 2) {
+      pages.push('...');
+    }
+    
+    // Add pages around current page
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+    
+    // Add ellipsis before last page if needed
+    if (endPage < totalPages - 1) {
+      pages.push('...');
+    }
+    
+    // Always show last page if there is more than one page
+    if (totalPages > 1) {
+      pages.push(totalPages);
+    }
+    
+    return pages;
   };
 
   return (
@@ -535,6 +579,9 @@ export default function KhataPage() {
                 <h3 className="text-2xl font-bold mt-1">
                   {formatCurrency(totalAmount)}
                 </h3>
+                <p className="text-blue-200 text-xs mt-1">
+                  Page total • Overall: {formatCurrency(pagination.totalCount > 0 ? pagination.totalCount * (totalAmount / payments.length) : 0)}
+                </p>
               </div>
               <CurrencyDollarIcon className="w-8 h-8 text-blue-200" />
             </div>
@@ -560,7 +607,10 @@ export default function KhataPage() {
                 <p className="text-red-100 text-sm font-medium">
                   Total Records
                 </p>
-                <h3 className="text-2xl font-bold mt-1">{payments?.length}</h3>
+                <h3 className="text-2xl font-bold mt-1">{pagination.totalCount}</h3>
+                <p className="text-red-200 text-xs mt-1">
+                  Showing {payments.length} of {pagination.totalCount}
+                </p>
               </div>
               <ClockIcon className="w-8 h-8 text-red-200" />
             </div>
@@ -569,7 +619,7 @@ export default function KhataPage() {
 
         {/* Payments Table */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          {currentItems.length === 0 ? (
+          {payments.length === 0 ? (
             <div className="text-center py-12">
               <CurrencyDollarIcon className="mx-auto h-16 w-16 text-gray-400" />
               <h3 className="mt-4 text-lg font-medium text-gray-900">
@@ -597,6 +647,9 @@ export default function KhataPage() {
                         Due Date
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Act. Date
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Amount
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -608,7 +661,7 @@ export default function KhataPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {currentItems.map((payment) => (
+                    {(searchQuery ? filteredPayments : payments).map((payment) => (
                       <tr
                         key={payment.id}
                         className="hover:bg-gray-50 transition-colors"
@@ -644,18 +697,24 @@ export default function KhataPage() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {formatDate(payment.customer.connectionStartDate)}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">
                             {formatCurrency(payment.amount)}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
-                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${payment.status === "paid"
-                              ? "bg-green-100 text-green-800"
-                              : payment.status === "pending"
+                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                              payment.status === "paid"
+                                ? "bg-green-100 text-green-800"
+                                : payment.status === "pending"
                                 ? "bg-yellow-100 text-yellow-800"
                                 : "bg-red-100 text-red-800"
-                              }`}
+                            }`}
                           >
                             {payment.status.toUpperCase()}
                           </span>
@@ -673,10 +732,11 @@ export default function KhataPage() {
                                 setShowPaymentModal(true);
                               }}
                               disabled={payment.status === "paid"}
-                              className={`p-1 rounded ${payment.status === "paid"
-                                ? "text-gray-400 cursor-not-allowed"
-                                : "text-indigo-600 hover:text-indigo-900"
-                                }`}
+                              className={`p-1 rounded ${
+                                payment.status === "paid"
+                                  ? "text-gray-400 cursor-not-allowed"
+                                  : "text-indigo-600 hover:text-indigo-900"
+                              }`}
                               title={
                                 payment.status === "paid"
                                   ? "Already paid"
@@ -694,7 +754,7 @@ export default function KhataPage() {
                             </Link>
                             {payment.status === "paid" && (
                               <button
-                                onClick={() => handlePrintClick(payment)}
+                                onClick={() => handlePrint(payment)}
                                 className="text-green-600 hover:text-green-900 p-1"
                                 title="Print Payment"
                               >
@@ -710,49 +770,71 @@ export default function KhataPage() {
               </div>
 
               {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="bg-white px-6 py-3 flex items-center justify-between border-t border-gray-200">
+              {pagination.totalPages > 1 && (
+                <div className="bg-white px-6 py-4 flex items-center justify-between border-t border-gray-200">
                   <div className="flex-1 flex justify-between items-center">
                     <div>
                       <p className="text-sm text-gray-700">
                         Showing{" "}
                         <span className="font-medium">
-                          {(currentPage - 1) * ITEMS_PER_PAGE + 1}
+                          {(pagination.currentPage - 1) * pagination.limit + 1}
                         </span>{" "}
                         to{" "}
                         <span className="font-medium">
                           {Math.min(
-                            currentPage * ITEMS_PER_PAGE,
-                            filteredPayments.length
+                            pagination.currentPage * pagination.limit,
+                            pagination.totalCount
                           )}
                         </span>{" "}
                         of{" "}
                         <span className="font-medium">
-                          {filteredPayments.length}
+                          {pagination.totalCount}
                         </span>{" "}
                         results
                       </p>
                     </div>
-                    <div className="flex space-x-2">
+                    <div className="flex items-center space-x-2">
+                      {/* Previous Button */}
                       <button
-                        onClick={() =>
-                          setCurrentPage((prev) => Math.max(prev - 1, 1))
-                        }
-                        disabled={currentPage === 1}
-                        className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                        onClick={() => handlePageChange(pagination.currentPage - 1)}
+                        disabled={!pagination.hasPrevPage}
+                        className="relative inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
+                        <ChevronLeftIcon className="h-4 w-4 mr-1" />
                         Previous
                       </button>
+
+                      {/* Page Numbers */}
+                      <div className="hidden md:flex space-x-1">
+                        {generatePageNumbers().map((page, index) => (
+                          <button
+                            key={index}
+                            onClick={() => typeof page === 'number' ? handlePageChange(page) : null}
+                            disabled={page === '...'}
+                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                              page === pagination.currentPage
+                                ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
+                                : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                            } ${page === '...' ? 'cursor-default' : 'cursor-pointer'}`}
+                          >
+                            {page}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Mobile page indicator */}
+                      <div className="md:hidden text-sm text-gray-700">
+                        Page {pagination.currentPage} of {pagination.totalPages}
+                      </div>
+
+                      {/* Next Button */}
                       <button
-                        onClick={() =>
-                          setCurrentPage((prev) =>
-                            Math.min(prev + 1, totalPages)
-                          )
-                        }
-                        disabled={currentPage === totalPages}
-                        className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                        onClick={() => handlePageChange(pagination.currentPage + 1)}
+                        disabled={!pagination.hasNextPage}
+                        className="relative inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Next
+                        <ChevronRightIcon className="h-4 w-4 ml-1" />
                       </button>
                     </div>
                   </div>
@@ -905,73 +987,6 @@ export default function KhataPage() {
                   className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
                 >
                   {saving ? "Processing..." : "Mark as Paid"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Package Activation Date Modal */}
-      {showActivationDateModal && paymentForPrint && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-lg max-w-md w-full">
-            <div className="p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">
-                Set Package Activation Date
-              </h2>
-
-              {/* Customer Info */}
-              <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                <div className="flex items-center">
-                  <div className="w-12 h-12 bg-indigo-600 rounded-full flex items-center justify-center mr-3">
-                    <UserIcon className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">
-                      {paymentForPrint.customer.name}
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      {paymentForPrint.customer.mobile}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      Package: {paymentForPrint.plan.name}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Activation Date Input */}
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Package Activation Date
-                  </label>
-                  <input
-                    type="date"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    value={activationDate}
-                    onChange={(e) => setActivationDate(e.target.value)}
-                  />
-                  <p className="text-sm text-gray-500 mt-1">
-                    This date will be shown on the receipt as the package activation date.
-                  </p>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex space-x-3 mt-6">
-                <button
-                  onClick={() => setShowActivationDateModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => handlePrint(paymentForPrint, activationDate)}
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                >
-                  Print Receipt
                 </button>
               </div>
             </div>

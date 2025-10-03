@@ -14,6 +14,7 @@ import {
   MapPinIcon,
   IdentificationIcon,
   LockClosedIcon,
+  CalendarIcon,
 } from "@heroicons/react/24/outline";
 import {
   addCustomer,
@@ -35,6 +36,7 @@ interface FormData {
   email: string;
   address: string;
   status: string; // Add status field
+  connectionStartDate: string; // Add connection start date
 }
 
 export default function CustomerForm() {
@@ -48,6 +50,7 @@ export default function CustomerForm() {
   const [packages, setPackages] = useState<any[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState("basic");
+  const [originalPlan, setOriginalPlan] = useState(""); // Track original plan for updates
 
   const [formData, setFormData] = useState<FormData>({
     name: "",
@@ -60,7 +63,8 @@ export default function CustomerForm() {
     phone: "",
     email: "",
     address: "",
-    status: "pending", // Add default status
+    status: "pending",
+    connectionStartDate: new Date().toISOString().split('T')[0], // Default to today
   });
 
   useEffect(() => {
@@ -73,6 +77,28 @@ export default function CustomerForm() {
 
         setConnectionTypes(connectionTypesData);
         setPackages(packagesData);
+
+        // If editing, load customer data
+        if (id) {
+          const customerData = await fetchCustomer(id);
+          setFormData({
+            name: customerData.name,
+            username: customerData.username,
+            password: "",
+            plan: customerData.plan?.id || "",
+            connectionType: customerData.connectionType?.id || "",
+            nationalId: customerData.nationalId,
+            mobile: customerData.mobile,
+            phone: customerData.phone || "",
+            email: customerData.email || "",
+            address: customerData.address || "",
+            status: customerData.status || "pending",
+            connectionStartDate: customerData.connectionStartDate 
+              ? new Date(customerData.connectionStartDate).toISOString().split('T')[0]
+              : new Date().toISOString().split('T')[0],
+          });
+          setOriginalPlan(customerData.plan?.id || "");
+        }
       } catch (error) {
         console.error("Error loading form data:", error);
         alert("Failed to load form data");
@@ -118,13 +144,6 @@ export default function CustomerForm() {
           newErrors.mobile = "Must contain only numbers";
         else delete newErrors.mobile;
         break;
-      // case "phone":
-      //   if (value && (value.length < 10 || value.length > 15))
-      //     newErrors.phone = "Must be between 10-15 digits";
-      //   else if (value && !/^\d+$/.test(value))
-      //     newErrors.phone = "Must contain only numbers";
-      //   else delete newErrors.phone;
-      //   break;
       case "email":
         if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
           newErrors.email = "Invalid email format";
@@ -142,6 +161,10 @@ export default function CustomerForm() {
       case "connectionType":
         if (!value) newErrors.connectionType = "Connection type is required";
         else delete newErrors.connectionType;
+        break;
+      case "connectionStartDate":
+        if (!value) newErrors.connectionStartDate = "Activation date is required";
+        else delete newErrors.connectionStartDate;
         break;
       default:
         break;
@@ -200,16 +223,6 @@ export default function CustomerForm() {
         newErrors.mobile = "Must contain only numbers";
         isValid = false;
       }
-      // if (
-      //   formData.phone &&
-      //   (formData.phone.length < 10 || formData.phone.length > 15)
-      // ) {
-      //   newErrors.phone = "Must be between 10-15 digits";
-      //   isValid = false;
-      // } else if (formData.phone && !/^\d+$/.test(formData.phone)) {
-      //   newErrors.phone = "Must contain only numbers";
-      //   isValid = false;
-      // }
       if (
         formData.email &&
         !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)
@@ -262,6 +275,10 @@ export default function CustomerForm() {
       finalErrors.connectionType = "Connection type is required";
       isValid = false;
     }
+    if (!formData.connectionStartDate) {
+      finalErrors.connectionStartDate = "Activation date is required";
+      isValid = false;
+    }
 
     setErrors(finalErrors);
 
@@ -272,13 +289,24 @@ export default function CustomerForm() {
     try {
       setSaving(true);
 
-      // Prepare data for API - only send password if it's not empty (for updates)
-      const apiData: any = { ...formData };
-      if (id && !apiData.password) {
-        delete apiData.password; // Don't send empty password for updates
+      // Prepare data for API
+      const apiData: any = { 
+        ...formData,
+        connectionStartDate: formData.connectionStartDate ? `${formData.connectionStartDate}T00:00:00` : null
+      };
+
+      // For updates: only send plan if it's changed
+      if (id) {
+        if (!apiData.password) {
+          delete apiData.password; // Don't send empty password for updates
+        }
+        
+        // Only send plan if it's changed
+        if (formData.plan === originalPlan) {
+          delete apiData.plan;
+        }
       }
 
-      // Send the data exactly as React Native does (simple string IDs)
       if (id) {
         await updateCustomer(id, apiData);
       } else {
@@ -336,7 +364,6 @@ export default function CustomerForm() {
                 <button
                   key={tab}
                   onClick={() => {
-                    // Only allow switching to previous tabs, not forward without validation
                     const currentIndex = [
                       "basic",
                       "contact",
@@ -643,6 +670,28 @@ export default function CustomerForm() {
                   </select>
                   {errors.plan && (
                     <p className="text-red-500 text-sm mt-2">{errors.plan}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Package Activation Date *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
+                        errors.connectionStartDate ? "border-red-500" : "border-gray-300"
+                      }`}
+                      value={formData.connectionStartDate}
+                      onChange={(e) => handleChange("connectionStartDate", e.target.value)}
+                    />
+                    {/* <CalendarIcon className="absolute right-3 top-3.5 h-5 w-5 text-gray-400" /> */}
+                  </div>
+                  {errors.connectionStartDate && (
+                    <p className="text-red-500 text-sm mt-2">
+                      {errors.connectionStartDate}
+                    </p>
                   )}
                 </div>
               </div>

@@ -22,15 +22,24 @@ export interface Payment {
     name: string;
     price: number;
   };
+  connectionStartDate?: string;
+}
+
+export interface PaginationInfo {
+  currentPage: number;
+  totalPages: number;
+  totalCount: number;
+  limit: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+  nextPage: number | null;
+  prevPage: number | null;
 }
 
 export interface PaymentsResponse {
   success: boolean;
   data: Payment[];
-  count: number;
-  totalAmount: number;
-  paidAmount: number;
-  pendingAmount: number;
+  pagination: PaginationInfo;
   filters: {
     startDate: string;
     endDate: string;
@@ -49,12 +58,20 @@ export interface PaymentStats {
 export const fetchPayments = async (
   startDate: string,
   endDate: string,
+  page: number = 1,
+  limit: number = 10,
   status?: string
 ): Promise<PaymentsResponse> => {
   const params = new URLSearchParams({
     startDate,
-    endDate
+    endDate,
+    page: page.toString(),
+    limit: limit.toString()
   });
+  
+  if (status && status !== 'all') {
+    params.append('status', status);
+  }
   
   const { data } = await apiClient.get(`/payments?${params}`);
   return data;
@@ -75,5 +92,3 @@ export const markPaymentAsPaid = async (
   );
   return data;
 };
-
- 

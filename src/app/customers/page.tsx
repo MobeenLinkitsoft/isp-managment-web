@@ -15,30 +15,9 @@ import {
   FunnelIcon,
   ArrowPathIcon,
 } from "@heroicons/react/24/outline";
-import { fetchCustomers, deleteCustomer } from "../../lib/api/customer";
+import { fetchCustomers, deleteCustomer, type Customer, type PaginationInfo, type FetchCustomersParams } from "../../lib/api/customer";
 import { fetchConnectionTypes } from "../../lib/api/connections";
 import { fetchPackages } from "../../lib/api/packages";
-
-interface Customer {
-  id: string;
-  name: string;
-  username: string;
-  email: string;
-  mobile: string;
-  nationalId: string;
-  address: string;
-  isActive: boolean;
-  plan: {
-    id: string;
-    name: string;
-    price: number;
-  };
-  connectionType: {
-    id: string;
-    name: string;
-  };
-  registrationDate?: string;
-}
 
 const ITEMS_PER_PAGE = 10;
 
@@ -51,6 +30,7 @@ export default function CustomersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [sortConfig, setSortConfig] = useState<{
     key: string;
     direction: "asc" | "desc";
@@ -58,35 +38,77 @@ export default function CustomersPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
+  // Load connection types and packages on mount
   useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    try {
-      setIsLoading(true);
-      const [customersData, connectionTypesData, packagesData] =
-        await Promise.all([
-          fetchCustomers(),
+    const loadStaticData = async () => {
+      try {
+        const [connectionTypesData, packagesData] = await Promise.all([
           fetchConnectionTypes(),
           fetchPackages(),
         ]);
+        setConnectionTypes(connectionTypesData);
+        setPackages(packagesData);
+      } catch (error) {
+        console.error("Error loading static data:", error);
+      }
+    };
+    loadStaticData();
+  }, []);
 
-      setCustomers(customersData);
-      setConnectionTypes(connectionTypesData);
-      setPackages(packagesData);
+  // Load customers with pagination and filters
+  const loadCustomers = async (page: number = 1, search: string = searchQuery, filter: string = activeFilter) => {
+    try {
+      setIsLoading(true);
+      
+      const params: FetchCustomersParams = {
+        page,
+        limit: ITEMS_PER_PAGE,
+      };
+
+      // Add search query if provided
+      if (search) {
+        params.search = search;
+      }
+
+      // Add status filter if not "all"
+      if (filter !== "all") {
+        params.status = filter === "active" ? "active" : "inactive";
+      }
+
+      const response = await fetchCustomers(params);
+      
+      setCustomers(response.data);
+      setPagination(response.pagination);
+      setCurrentPage(page);
     } catch (error) {
-      console.error("Error loading data:", error);
-      alert("Failed to load data");
+      console.error("Error loading customers:", error);
+      alert("Failed to load customers");
     } finally {
       setIsLoading(false);
       setRefreshing(false);
     }
   };
 
+  // Initial load and when filters change
+  useEffect(() => {
+    loadCustomers(1, searchQuery, activeFilter);
+  }, [searchQuery, activeFilter]);
+
   const handleRefresh = () => {
     setRefreshing(true);
-    loadData();
+    loadCustomers(currentPage, searchQuery, activeFilter);
+  };
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    // Reset to page 1 when search changes
+    setCurrentPage(1);
+  };
+
+  const handleFilterChange = (filter: string) => {
+    setActiveFilter(filter);
+    // Reset to page 1 when filter changes
+    setCurrentPage(1);
   };
 
   const handleStatusToggle = async (customer: Customer) => {
@@ -98,18 +120,11 @@ export default function CustomersPage() {
 
     try {
       setUpdatingId(customer.id);
-      // if (newStatus) {
-      //   await restoreCustomer(customer.id);
-      // } else {
-        // alert(customer.id)
       await deleteCustomer(customer.id);
-      // }
-      loadData();
-      // Update local state immediately for better UX
-      // setCustomers(prev => prev.map(cust =>
-      //   cust.id === customer.id ? { ...cust, isActive: newStatus } : cust
-      // ));
-
+      
+      // Reload current page after status change
+      loadCustomers(currentPage, searchQuery, activeFilter);
+      
       alert(`Customer ${action}d successfully`);
     } catch (error) {
       console.error(`Error ${action}ing customer:`, error);
@@ -131,86 +146,56 @@ export default function CustomersPage() {
     setSortConfig({ key, direction });
   };
 
-  const sortedAndFilteredCustomers = useMemo(() => {
-    let filtered = customers.filter((customer) => {
-      const searchLower = searchQuery.toLowerCase();
-      const matchesSearch =
-        customer.name.toLowerCase().includes(searchLower) ||
-        customer.email.toLowerCase().includes(searchLower) ||
-        customer.mobile.includes(searchQuery) ||
-        customer.nationalId.includes(searchQuery) ||
-        customer.username.toLowerCase().includes(searchLower);
+  // Local sorting for current page (optional - you can remove this if you want server-side sorting)
+  const sortedCustomers = useMemo(() => {
+    if (!sortConfig) return customers;
 
-      if (activeFilter === "all") return matchesSearch;
-      if (activeFilter === "active") return matchesSearch && customer.isActive;
-      if (activeFilter === "inactive")
-        return matchesSearch && !customer.isActive;
-      return matchesSearch;
+    return [...customers].sort((a, b) => {
+      if (
+        a[sortConfig.key as keyof Customer] <
+        b[sortConfig.key as keyof Customer]
+      ) {
+        return sortConfig.direction === "asc" ? -1 : 1;
+      }
+      if (
+        a[sortConfig.key as keyof Customer] >
+        b[sortConfig.key as keyof Customer]
+      ) {
+        return sortConfig.direction === "asc" ? 1 : -1;
+      }
+      return 0;
     });
+  }, [customers, sortConfig]);
 
-    if (sortConfig) {
-      filtered.sort((a, b) => {
-        if (
-          a[sortConfig.key as keyof Customer] <
-          b[sortConfig.key as keyof Customer]
-        ) {
-          return sortConfig.direction === "asc" ? -1 : 1;
-        }
-        if (
-          a[sortConfig.key as keyof Customer] >
-          b[sortConfig.key as keyof Customer]
-        ) {
-          return sortConfig.direction === "asc" ? 1 : -1;
-        }
-        return 0;
-      });
-    }
+  // Pagination handlers
+  const handlePageChange = (page: number) => {
+    loadCustomers(page, searchQuery, activeFilter);
+  };
 
-    return filtered;
-  }, [customers, searchQuery, activeFilter, sortConfig]);
-
-  // Pagination logic
-  const totalPages = Math.ceil(
-    sortedAndFilteredCustomers.length / ITEMS_PER_PAGE
-  );
-  const currentItems = sortedAndFilteredCustomers.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
-
+  // Stats calculation (you might want to get this from API too)
   const stats = [
     {
       title: "Total Customers",
-      value: customers.length,
+      value: pagination?.totalCount || 0,
       filter: "all",
       color: "bg-blue-500",
     },
     {
       title: "Active Customers",
-      value: customers.filter((c) => c.isActive).length,
+      value: customers.filter((c) => c.isActive).length, // This is just for current page - consider API endpoint for stats
       filter: "active",
       color: "bg-green-500",
     },
     {
       title: "Inactive Customers",
-      value: customers.filter((c) => !c.isActive).length,
+      value: customers.filter((c) => !c.isActive).length, // This is just for current page - consider API endpoint for stats
       filter: "inactive",
       color: "bg-red-500",
     },
     {
-      title: "New This Month",
-      value: customers.filter((c) => {
-        const regDate = c.registrationDate
-          ? new Date(c.registrationDate)
-          : null;
-        const now = new Date();
-        return (
-          regDate &&
-          regDate.getMonth() === now.getMonth() &&
-          regDate.getFullYear() === now.getFullYear()
-        );
-      }).length,
-      filter: "new",
+      title: "Current Page",
+      value: customers.length,
+      filter: "current",
       color: "bg-purple-500",
     },
   ];
@@ -246,6 +231,15 @@ export default function CustomersPage() {
       </div>
     </th>
   );
+
+  const formatDate = (timestamp: number) => {
+    const date = new Date(timestamp * 1000);
+    return date.toLocaleDateString("en-US", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -287,7 +281,7 @@ export default function CustomersPage() {
             <div
               key={index}
               className={`bg-white rounded-xl shadow-sm p-6 border-l-4 ${stat.color} cursor-pointer transition-transform hover:scale-105`}
-              onClick={() => setActiveFilter(stat.filter)}
+              onClick={() => handleFilterChange(stat.filter)}
             >
               <div className="flex justify-between items-start">
                 <div>
@@ -324,11 +318,11 @@ export default function CustomersPage() {
                 placeholder="Search customers by name, email, mobile, NIC, or username..."
                 className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => handleSearch(e.target.value)}
               />
               {searchQuery && (
                 <button
-                  onClick={() => setSearchQuery("")}
+                  onClick={() => handleSearch("")}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
                 >
                   <XMarkIcon className="h-4 w-4 text-gray-400" />
@@ -340,7 +334,7 @@ export default function CustomersPage() {
               <select
                 className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 value={activeFilter}
-                onChange={(e) => setActiveFilter(e.target.value)}
+                onChange={(e) => handleFilterChange(e.target.value)}
               >
                 <option value="all">All Status</option>
                 <option value="active">Active Only</option>
@@ -352,7 +346,7 @@ export default function CustomersPage() {
 
         {/* Customers Table */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          {currentItems.length === 0 ? (
+          {sortedCustomers.length === 0 && !isLoading ? (
             <div className="text-center py-12">
               <UsersIcon className="mx-auto h-16 w-16 text-gray-400" />
               <h3 className="mt-4 text-lg font-medium text-gray-900">
@@ -382,6 +376,7 @@ export default function CustomersPage() {
                       <SortableHeader label="Customer" sortKey="name" />
                       <SortableHeader label="Contact" sortKey="mobile" />
                       <SortableHeader label="Plan" sortKey="plan.name" />
+                      <SortableHeader label="Act. Date" sortKey="date" />
                       <SortableHeader
                         label="Connection"
                         sortKey="connectionType.name"
@@ -393,7 +388,7 @@ export default function CustomersPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {currentItems.map((customer) => (
+                    {sortedCustomers.map((customer) => (
                       <tr
                         key={customer.id}
                         className="hover:bg-gray-50 transition-colors"
@@ -434,6 +429,9 @@ export default function CustomersPage() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {formatDate(Number(customer.connectionStartDate))}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {getConnectionTypeName(customer.connectionType?.id)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -456,13 +454,6 @@ export default function CustomersPage() {
                             >
                               <EyeIcon className="w-5 h-5" />
                             </Link>
-                            {/* <Link
-                              href={`/customers/edit/${customer.id}`}
-                              className="text-indigo-600 hover:text-indigo-900 p-1"
-                              title="Edit"
-                            >
-                              <PencilIcon className="w-5 h-5" />
-                            </Link> */}
 
                             {/* Toggle Switch */}
                             <label className="relative inline-flex items-center cursor-pointer">
@@ -503,47 +494,41 @@ export default function CustomersPage() {
               </div>
 
               {/* Pagination */}
-              {totalPages > 1 && (
+              {pagination && pagination.totalPages > 1 && (
                 <div className="bg-white px-6 py-3 flex items-center justify-between border-t border-gray-200">
                   <div className="flex-1 flex justify-between items-center">
                     <div>
                       <p className="text-sm text-gray-700">
                         Showing{" "}
                         <span className="font-medium">
-                          {(currentPage - 1) * ITEMS_PER_PAGE + 1}
+                          {(pagination.currentPage - 1) * pagination.limit + 1}
                         </span>{" "}
                         to{" "}
                         <span className="font-medium">
                           {Math.min(
-                            currentPage * ITEMS_PER_PAGE,
-                            sortedAndFilteredCustomers.length
+                            pagination.currentPage * pagination.limit,
+                            pagination.totalCount
                           )}
                         </span>{" "}
                         of{" "}
                         <span className="font-medium">
-                          {sortedAndFilteredCustomers.length}
+                          {pagination.totalCount}
                         </span>{" "}
                         results
                       </p>
                     </div>
                     <div className="flex space-x-2">
                       <button
-                        onClick={() =>
-                          setCurrentPage((prev) => Math.max(prev - 1, 1))
-                        }
-                        disabled={currentPage === 1}
+                        onClick={() => handlePageChange(pagination.currentPage - 1)}
+                        disabled={!pagination.hasPrevPage}
                         className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
                       >
                         <ChevronLeftIcon className="w-5 h-5" />
                         Previous
                       </button>
                       <button
-                        onClick={() =>
-                          setCurrentPage((prev) =>
-                            Math.min(prev + 1, totalPages)
-                          )
-                        }
-                        disabled={currentPage === totalPages}
+                        onClick={() => handlePageChange(pagination.currentPage + 1)}
+                        disabled={!pagination.hasNextPage}
                         className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
                       >
                         Next

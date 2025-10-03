@@ -10,11 +10,12 @@ export interface Customer {
   nationalId: string;
   address: string;
   isActive: boolean;
-  status:string;ƒ
+  status: string;
+  connectionStartDate: string;
   plan: {
     id: string;
     name: string;
-      price: number; // required
+    price: number;
   };
   connectionType: {
     id: string;
@@ -22,8 +23,32 @@ export interface Customer {
   };
 }
 
-export const fetchCustomers = async (): Promise<Customer[]> => {
-  const { data } = await apiClient.get('/customers');
+export interface PaginationInfo {
+  currentPage: number;
+  totalPages: number;
+  totalCount: number;
+  limit: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+  nextPage: number | null;
+  prevPage: number | null;
+}
+
+export interface CustomersResponse {
+  success: boolean;
+  data: Customer[];
+  pagination: PaginationInfo;
+}
+
+export interface FetchCustomersParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: string;
+}
+
+export const fetchCustomers = async (params?: FetchCustomersParams): Promise<CustomersResponse> => {
+  const { data } = await apiClient.get('/customers', { params });
   return data;
 };
 
