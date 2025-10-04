@@ -509,7 +509,7 @@ export default function Dashboard() {
                         <h3 className="text-2xl font-bold text-gray-800 mt-1">
                           {stat.value}
                         </h3>
-                        <div className="flex items-center mt-2">
+                        {/* <div className="flex items-center mt-2">
                           <span
                             className={`text-${
                               stat.change.includes("+") ? "green" : "red"
@@ -521,7 +521,7 @@ export default function Dashboard() {
                           <span className="text-gray-500 text-sm ml-2">
                             from last month
                           </span>
-                        </div>
+                        </div> */}
                       </div>
                       <div className={`bg-${stat.color}-100 p-3 rounded-lg`}>
                         <stat.icon
@@ -560,15 +560,16 @@ export default function Dashboard() {
                 <h3 className="text-lg font-semibold text-gray-800">
                   Revenue Analytics
                 </h3>
-                {loadingStates.revenue ? (
+                {/* {loadingStates.revenue ? (
                   <div className="h-8 w-32 bg-gray-200 rounded animate-pulse"></div>
                 ) : (
-                  <select className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    <option>Last 7 Days</option>
-                    <option>Last 30 Days</option>
-                    <option>Last 90 Days</option>
-                  </select>
-                )}
+                  <></>
+                  // <select className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  //   <option>Last 7 Days</option>
+                  //   <option>Last 30 Days</option>
+                  //   <option>Last 90 Days</option>
+                  // </select>
+                )} */}
               </div>
               <div className="h-64">
                 {loadingStates.revenue ? (
@@ -587,15 +588,16 @@ export default function Dashboard() {
                 <h3 className="text-lg font-semibold text-gray-800">
                   Customer Growth
                 </h3>
-                {loadingStates.customers ? (
+                {/* {loadingStates.customers ? (
                   <div className="h-8 w-32 bg-gray-200 rounded animate-pulse"></div>
                 ) : (
-                  <select className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    <option>Last 7 Days</option>
-                    <option>Last 30 Days</option>
-                    <option>Last 90 Days</option>
-                  </select>
-                )}
+                  <></>
+                  // <select className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  //   <option>Last 7 Days</option>
+                  //   <option>Last 30 Days</option>
+                  //   <option>Last 90 Days</option>
+                  // </select>
+                )} */}
               </div>
               <div className="h-64">
                 {loadingStates.customers ? (
