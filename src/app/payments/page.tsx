@@ -97,9 +97,16 @@ export default function KhataPage() {
     nextPage: null,
     prevPage: null,
   });
+  const [stats, setStats] = useState({
+    totalAmount: 0,
+    paidAmount: 0,
+    pendingAmount: 0
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [apiSearchQuery, setApiSearchQuery] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -154,7 +161,7 @@ export default function KhataPage() {
 
   useEffect(() => {
     loadData();
-  }, [startDate, endDate, currentUser, currentPage, statusFilter]);
+  }, [startDate, endDate, currentUser, currentPage, statusFilter, apiSearchQuery]);
 
   const filterPaymentsByRole = (paymentsData: Payment[]) => {
     if (currentUser?.role === "admin") {
@@ -167,31 +174,52 @@ export default function KhataPage() {
     }
   };
 
-  const loadData = async () => {
-    try {
-      setIsLoading(true);
-      const paymentsResponse = await fetchPayments(
-        startDate, 
-        endDate, 
-        currentPage, 
-        ITEMS_PER_PAGE,
-        statusFilter
-      );
-      
-      const filteredPaymentsData = filterPaymentsByRole(paymentsResponse.data);
-      setPayments(filteredPaymentsData);
-      setPagination(paymentsResponse.pagination);
+ const loadData = async () => {
+  try {
+    setIsLoading(true);
+    
+    // If there's a search query, we don't use date filters
+    const paymentsResponse = await fetchPayments(
+      apiSearchQuery ? '' : startDate, // Don't use dates when searching
+      apiSearchQuery ? '' : endDate,   // Don't use dates when searching
+      currentPage, 
+      ITEMS_PER_PAGE,
+      statusFilter,
+      apiSearchQuery
+    );
+    
+    const filteredPaymentsData = filterPaymentsByRole(paymentsResponse.data);
+    setPayments(filteredPaymentsData);
+    setPagination(paymentsResponse.pagination);
+    setStats(paymentsResponse.stats);
 
-      if (currentUser?.role === "admin") {
-        const employeesResponse = await fetchEmployees();
-        setEmployees(employeesResponse);
-      }
-    } catch (error) {
-      console.error("Error loading data:", error);
-      alert("Failed to load payments data");
-    } finally {
-      setIsLoading(false);
-      setRefreshing(false);
+    if (currentUser?.role === "admin") {
+      const employeesResponse = await fetchEmployees();
+      setEmployees(employeesResponse);
+    }
+  } catch (error) {
+    console.error("Error loading data:", error);
+    alert("Failed to load payments data");
+  } finally {
+    setIsLoading(false);
+    setRefreshing(false);
+    setIsSearching(false);
+  }
+};
+
+  const handleSearch = () => {
+    if (searchQuery.trim() !== apiSearchQuery) {
+      setIsSearching(true);
+      setApiSearchQuery(searchQuery.trim());
+      setCurrentPage(1);
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchQuery("");
+    if (apiSearchQuery !== "") {
+      setApiSearchQuery("");
+      setCurrentPage(1);
     }
   };
 
@@ -211,7 +239,7 @@ export default function KhataPage() {
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, statusFilter]);
+  }, [statusFilter]);
 
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
@@ -219,32 +247,16 @@ export default function KhataPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const totalAmount = payments.reduce(
+  const totalAmount = stats.totalAmount || payments.reduce(
     (sum, payment) => sum + payment.amount,
     0
   );
-  const paidAmount = payments.reduce(
+  const paidAmount = stats.paidAmount || payments.reduce(
     (sum, payment) => (payment.status === "paid" ? sum + payment.amount : sum),
     0
   );
 
-  // Client-side search filtering
-  const filteredPayments = useMemo(() => {
-    if (!searchQuery) return payments;
-    
-    return payments.filter((payment) => {
-      const matchesSearch =
-        payment.customer.name
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase()) ||
-        payment.customer.mobile.includes(searchQuery) ||
-        payment.customer.email
-          ?.toLowerCase()
-          .includes(searchQuery.toLowerCase());
-
-      return matchesSearch;
-    });
-  }, [payments, searchQuery]);
+  // Client-side search filtering is removed since we're using API search
 
   const handleUpdatePayment = async () => {
     if (!selectedPayment) return;
@@ -469,18 +481,34 @@ export default function KhataPage() {
                 <input
                   type="text"
                   placeholder="Search by name, mobile, or email..."
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="block w-full pl-10 pr-20 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleSearch();
+                    }
+                  }}
                 />
                 {searchQuery && (
                   <button
-                    onClick={() => setSearchQuery("")}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    onClick={handleClearSearch}
+                    className="absolute inset-y-0 right-12 pr-3 flex items-center"
                   >
-                    <XMarkIcon className="h-4 w-4 text-gray-400" />
+                    <XMarkIcon className="h-4 w-4 text-gray-400 hover:text-gray-600" />
                   </button>
                 )}
+                <button
+                  onClick={handleSearch}
+                  disabled={isSearching}
+                  className="absolute inset-y-0 right-0 px-3 flex items-center bg-indigo-600 text-white rounded-r-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                >
+                  {isSearching ? (
+                    <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <MagnifyingGlassIcon className="h-4 w-4" />
+                  )}
+                </button>
               </div>
             </div>
 
@@ -580,7 +608,7 @@ export default function KhataPage() {
                   {formatCurrency(totalAmount)}
                 </h3>
                 <p className="text-blue-200 text-xs mt-1">
-                  Page total • Overall: {formatCurrency(pagination.totalCount > 0 ? pagination.totalCount * (totalAmount / payments.length) : 0)}
+                  {apiSearchQuery ? "Search results" : "Selected period"}
                 </p>
               </div>
               <CurrencyDollarIcon className="w-8 h-8 text-blue-200" />
@@ -596,6 +624,9 @@ export default function KhataPage() {
                 <h3 className="text-2xl font-bold mt-1">
                   {formatCurrency(paidAmount)}
                 </h3>
+                <p className="text-green-200 text-xs mt-1">
+                  {apiSearchQuery ? "Search results" : "Selected period"}
+                </p>
               </div>
               <CheckBadgeIcon className="w-8 h-8 text-green-200" />
             </div>
@@ -610,6 +641,7 @@ export default function KhataPage() {
                 <h3 className="text-2xl font-bold mt-1">{pagination.totalCount}</h3>
                 <p className="text-red-200 text-xs mt-1">
                   Showing {payments.length} of {pagination.totalCount}
+                  {apiSearchQuery && " (search results)"}
                 </p>
               </div>
               <ClockIcon className="w-8 h-8 text-red-200" />
@@ -623,13 +655,21 @@ export default function KhataPage() {
             <div className="text-center py-12">
               <CurrencyDollarIcon className="mx-auto h-16 w-16 text-gray-400" />
               <h3 className="mt-4 text-lg font-medium text-gray-900">
-                No payments found
+                {apiSearchQuery ? "No payments found" : "No payments found"}
               </h3>
               <p className="mt-2 text-gray-500">
-                {searchQuery
+                {apiSearchQuery
                   ? "Try a different search term"
                   : "No payments in the selected date range"}
               </p>
+              {apiSearchQuery && (
+                <button
+                  onClick={handleClearSearch}
+                  className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                >
+                  Clear Search
+                </button>
+              )}
             </div>
           ) : (
             <>
@@ -661,7 +701,7 @@ export default function KhataPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {(searchQuery ? filteredPayments : payments).map((payment) => (
+                    {payments.map((payment) => (
                       <tr
                         key={payment.id}
                         className="hover:bg-gray-50 transition-colors"
@@ -791,6 +831,7 @@ export default function KhataPage() {
                           {pagination.totalCount}
                         </span>{" "}
                         results
+                        {apiSearchQuery && " (search results)"}
                       </p>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -999,7 +1040,7 @@ export default function KhataPage() {
           <div className="bg-white rounded-xl shadow-lg p-6 flex flex-col items-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
             <p className="mt-4 text-gray-600 font-medium">
-              Loading payments...
+              {isSearching ? "Searching payments..." : "Loading payments..."}
             </p>
           </div>
         </div>

@@ -40,9 +40,15 @@ export interface PaymentsResponse {
   success: boolean;
   data: Payment[];
   pagination: PaginationInfo;
+  stats: {
+    totalAmount: number;
+    paidAmount: number;
+    pendingAmount: number;
+  };
   filters: {
     startDate: string;
     endDate: string;
+    search?: string | null;
   };
 }
 
@@ -60,7 +66,8 @@ export const fetchPayments = async (
   endDate: string,
   page: number = 1,
   limit: number = 10,
-  status?: string
+  status?: string,
+  search?: string
 ): Promise<PaymentsResponse> => {
   const params = new URLSearchParams({
     startDate,
@@ -73,7 +80,13 @@ export const fetchPayments = async (
     params.append('status', status);
   }
   
-  const { data } = await apiClient.get(`/payments?${params}`);
+  // Build the URL - search is a separate endpoint parameter
+  let url = `/payments?${params}`;
+  if (search && search.trim() !== '') {
+    url = `/payments?search=${encodeURIComponent(search.trim())}`;
+  }
+  
+  const { data } = await apiClient.get(url);
   return data;
 };
 

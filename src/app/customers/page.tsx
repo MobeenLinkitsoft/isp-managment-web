@@ -15,7 +15,7 @@ import {
   FunnelIcon,
   ArrowPathIcon,
 } from "@heroicons/react/24/outline";
-import { fetchCustomers, deleteCustomer, type Customer, type PaginationInfo, type FetchCustomersParams } from "../../lib/api/customer";
+import { fetchCustomers, deleteCustomer, type Customer, type PaginationInfo, type FetchCustomersParams, type StatsInfo } from "../../lib/api/customer";
 import { fetchConnectionTypes } from "../../lib/api/connections";
 import { fetchPackages } from "../../lib/api/packages";
 
@@ -31,12 +31,14 @@ export default function CustomersPage() {
   const [activeFilter, setActiveFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
+  const [stats, setStats] = useState<StatsInfo | null>(null);
   const [sortConfig, setSortConfig] = useState<{
     key: string;
     direction: "asc" | "desc";
   } | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [tempSearchQuery, setTempSearchQuery] = useState("");
 
   // Load connection types and packages on mount
   useEffect(() => {
@@ -79,6 +81,7 @@ export default function CustomersPage() {
       
       setCustomers(response.data);
       setPagination(response.pagination);
+      setStats(response.stats);
       setCurrentPage(page);
     } catch (error) {
       console.error("Error loading customers:", error);
@@ -89,25 +92,37 @@ export default function CustomersPage() {
     }
   };
 
-  // Initial load and when filters change
+  // Initial load
   useEffect(() => {
     loadCustomers(1, searchQuery, activeFilter);
-  }, [searchQuery, activeFilter]);
+  }, [activeFilter]);
 
   const handleRefresh = () => {
     setRefreshing(true);
     loadCustomers(currentPage, searchQuery, activeFilter);
   };
 
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
-    // Reset to page 1 when search changes
+  const handleSearch = () => {
+    setSearchQuery(tempSearchQuery);
     setCurrentPage(1);
+    loadCustomers(1, tempSearchQuery, activeFilter);
+  };
+
+  const handleClearSearch = () => {
+    setTempSearchQuery("");
+    setSearchQuery("");
+    setCurrentPage(1);
+    loadCustomers(1, "", activeFilter);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
   };
 
   const handleFilterChange = (filter: string) => {
     setActiveFilter(filter);
-    // Reset to page 1 when filter changes
     setCurrentPage(1);
   };
 
@@ -146,7 +161,7 @@ export default function CustomersPage() {
     setSortConfig({ key, direction });
   };
 
-  // Local sorting for current page (optional - you can remove this if you want server-side sorting)
+  // Local sorting for current page
   const sortedCustomers = useMemo(() => {
     if (!sortConfig) return customers;
 
@@ -172,23 +187,23 @@ export default function CustomersPage() {
     loadCustomers(page, searchQuery, activeFilter);
   };
 
-  // Stats calculation (you might want to get this from API too)
-  const stats = [
+  // Stats calculation using API stats
+  const statsCards = [
     {
       title: "Total Customers",
-      value: pagination?.totalCount || 0,
+      value: stats?.total || 0,
       filter: "all",
       color: "bg-blue-500",
     },
     {
       title: "Active Customers",
-      value: customers.filter((c) => c.isActive).length, // This is just for current page - consider API endpoint for stats
+      value: stats?.active || 0,
       filter: "active",
       color: "bg-green-500",
     },
     {
       title: "Inactive Customers",
-      value: customers.filter((c) => !c.isActive).length, // This is just for current page - consider API endpoint for stats
+      value: stats?.inactive || 0,
       filter: "inactive",
       color: "bg-red-500",
     },
@@ -277,7 +292,7 @@ export default function CustomersPage() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {stats.map((stat, index) => (
+          {statsCards.map((stat, index) => (
             <div
               key={index}
               className={`bg-white rounded-xl shadow-sm p-6 border-l-4 ${stat.color} cursor-pointer transition-transform hover:scale-105`}
@@ -316,18 +331,28 @@ export default function CustomersPage() {
               <input
                 type="text"
                 placeholder="Search customers by name, email, mobile, NIC, or username..."
-                className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                value={searchQuery}
-                onChange={(e) => handleSearch(e.target.value)}
+                className="block w-full pl-10 pr-20 py-3 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                value={tempSearchQuery}
+                onChange={(e) => setTempSearchQuery(e.target.value)}
+                onKeyPress={handleKeyPress}
               />
-              {searchQuery && (
+              <div className="absolute inset-y-0 right-0 flex items-center">
+                {tempSearchQuery && (
+                  <button
+                    onClick={handleClearSearch}
+                    className="p-1 mr-1 text-gray-400 hover:text-gray-600"
+                  >
+                    <XMarkIcon className="h-4 w-4" />
+                  </button>
+                )}
                 <button
-                  onClick={() => handleSearch("")}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={handleSearch}
+                  className="bg-indigo-600 text-white px-4 py-2 m-1 rounded-lg hover:bg-indigo-700 flex items-center"
                 >
-                  <XMarkIcon className="h-4 w-4 text-gray-400" />
+                  <MagnifyingGlassIcon className="h-4 w-4 mr-1" />
+                  Search
                 </button>
-              )}
+              </div>
             </div>
 
             <div className="flex space-x-2">
@@ -342,6 +367,17 @@ export default function CustomersPage() {
               </select>
             </div>
           </div>
+          {searchQuery && (
+            <div className="mt-3 flex items-center text-sm text-gray-600">
+              <span>Showing results for: "{searchQuery}"</span>
+              <button
+                onClick={handleClearSearch}
+                className="ml-2 text-indigo-600 hover:text-indigo-800"
+              >
+                Clear
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Customers Table */}
@@ -376,7 +412,7 @@ export default function CustomersPage() {
                       <SortableHeader label="Customer" sortKey="name" />
                       <SortableHeader label="Contact" sortKey="mobile" />
                       <SortableHeader label="Plan" sortKey="plan.name" />
-                      <SortableHeader label="Act. Date" sortKey="date" />
+                      <SortableHeader label="Act. Date" sortKey="connectionStartDate" />
                       <SortableHeader
                         label="Connection"
                         sortKey="connectionType.name"
@@ -417,7 +453,7 @@ export default function CustomersPage() {
                             {customer.mobile}
                           </div>
                           <div className="text-sm text-gray-500">
-                            {customer.email}
+                            {customer.email || "No email"}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -429,7 +465,7 @@ export default function CustomersPage() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatDate(Number(customer.connectionStartDate))}
+                          {formatDate(customer.connectionStartDate)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {getConnectionTypeName(customer.connectionType?.id)}

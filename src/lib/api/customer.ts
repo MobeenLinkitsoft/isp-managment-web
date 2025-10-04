@@ -12,15 +12,42 @@ export interface Customer {
   isActive: boolean;
   status: string;
   connectionStartDate: string;
+  registrationDate: number;
+  connectionEndDate: string | null;
+  password: string;
   plan: {
     id: string;
     name: string;
     price: number;
+    description: string;
+    speed: number;
+    isActive: boolean;
+    addedBy: string;
+    createdAt: number;
+    updatedAt: number;
   };
   connectionType: {
     id: string;
     name: string;
+    description: string;
+    isActive: boolean;
+    createdAt: number;
+    updatedAt: number;
   };
+  addedBy: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+    phone: string;
+    isActive: boolean;
+    createdAt: number;
+    updatedAt: number;
+    deletedAt: number;
+  };
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface PaginationInfo {
@@ -34,10 +61,22 @@ export interface PaginationInfo {
   prevPage: number | null;
 }
 
+export interface StatsInfo {
+  total: number;
+  active: number;
+  inactive: number;
+}
+
+export interface FiltersInfo {
+  search: string | null;
+}
+
 export interface CustomersResponse {
   success: boolean;
   data: Customer[];
   pagination: PaginationInfo;
+  stats: StatsInfo;
+  filters: FiltersInfo;
 }
 
 export interface FetchCustomersParams {

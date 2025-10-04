@@ -104,7 +104,7 @@ export default function Dashboard() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(
     null
   );
@@ -112,6 +112,12 @@ export default function Dashboard() {
   const [revenueData, setRevenueData] = useState<any>(null);
   const [customerData, setCustomerData] = useState<any>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [loadingStates, setLoadingStates] = useState({
+    metrics: false,
+    stats: false,
+    revenue: false,
+    customers: false,
+  });
 
   useEffect(() => {
     const user = getCurrentUser();
@@ -121,18 +127,85 @@ export default function Dashboard() {
 
   const fetchAllData = async () => {
     try {
-      setIsLoading(true);
-      const [metrics, stats, revenue, customers] = await Promise.all([
-        fetchDashboardMetrics(),
-        fetchQuickStats(),
-        fetchRevenueAnalytics(),
-        fetchCustomerAnalytics(),
-      ]);
+      // setIsLoading(true);
 
-      setDashboardData(metrics);
+      // Reset loading states
+      setLoadingStates({
+        metrics: true,
+        stats: true,
+        revenue: true,
+        customers: true,
+      });
+
+      // Fetch quick stats first (usually fastest)
+      const statsPromise = fetchQuickStats()
+        .then(setQuickStats)
+        .finally(() => setLoadingStates((prev) => ({ ...prev, stats: false })));
+
+      // Fetch main metrics
+      const metricsPromise = fetchDashboardMetrics()
+        .then(setDashboardData)
+        .finally(() =>
+          setLoadingStates((prev) => ({ ...prev, metrics: false }))
+        );
+
+      // Fetch revenue analytics
+      const revenuePromise = fetchRevenueAnalytics()
+        .then(setRevenueData)
+        .finally(() =>
+          setLoadingStates((prev) => ({ ...prev, revenue: false }))
+        );
+
+      // Fetch customer analytics
+      const customersPromise = fetchCustomerAnalytics()
+        .then(setCustomerData)
+        .finally(() =>
+          setLoadingStates((prev) => ({ ...prev, customers: false }))
+        );
+
+      // Wait for all but don't block UI completely
+      await Promise.all([
+        statsPromise,
+        metricsPromise,
+        revenuePromise,
+        customersPromise,
+      ]);
+    } catch (error) {
+      console.error("Dashboard error:", error);
+      alert("Failed to load dashboard data");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Alternative: Sequential loading with immediate UI updates
+  const fetchDataSequentially = async () => {
+    try {
+      // setIsLoading(true);
+
+      // Step 1: Load quick stats first (fastest)
+      setLoadingStates((prev) => ({ ...prev, stats: true }));
+      const stats = await fetchQuickStats();
       setQuickStats(stats);
+      setLoadingStates((prev) => ({ ...prev, stats: false }));
+
+      // Step 2: Load main metrics
+      setLoadingStates((prev) => ({ ...prev, metrics: true }));
+      const metrics = await fetchDashboardMetrics();
+      setDashboardData(metrics);
+      setLoadingStates((prev) => ({ ...prev, metrics: false }));
+
+      // Step 3: Load revenue data
+      setLoadingStates((prev) => ({ ...prev, revenue: true }));
+      const revenue = await fetchRevenueAnalytics();
       setRevenueData(revenue);
+      setLoadingStates((prev) => ({ ...prev, revenue: false }));
+
+      // Step 4: Load customer data
+      setLoadingStates((prev) => ({ ...prev, customers: true }));
+      const customers = await fetchCustomerAnalytics();
       setCustomerData(customers);
+      setLoadingStates((prev) => ({ ...prev, customers: false }));
     } catch (error) {
       console.error("Dashboard error:", error);
       alert("Failed to load dashboard data");
@@ -286,6 +359,22 @@ export default function Dashboard() {
     },
   };
 
+  // Show loading skeleton for specific components
+  const renderStatSkeleton = () => (
+    <div className="bg-white p-6 rounded-2xl shadow-sm border-l-4 border-gray-300 animate-pulse">
+      <div className="flex justify-between items-start">
+        <div className="flex-1">
+          <div className="h-4 bg-gray-200 rounded w-1/3 mb-2"></div>
+          <div className="h-8 bg-gray-200 rounded w-1/2 mb-2"></div>
+          <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+        </div>
+        <div className="bg-gray-200 p-3 rounded-lg">
+          <div className="w-6 h-6 bg-gray-300 rounded"></div>
+        </div>
+      </div>
+    </div>
+  );
+
   if (isLoggingOut) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -296,15 +385,6 @@ export default function Dashboard() {
       </div>
     );
   }
-
-  // if (isLoading) {
-  //     <div className="fixed inset-0 bg-black bg-opacity-20 flex items-center justify-center z-50">
-  //       <div className="bg-white rounded-xl shadow-lg p-6 flex flex-col items-center">
-  //         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-  //         <p className="mt-4 text-gray-600 font-medium">Loading dashboard...</p>
-  //       </div>
-  //     </div>
-  // }
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -330,9 +410,12 @@ export default function Dashboard() {
             <div className="flex space-x-4">
               <button
                 onClick={handleRefresh}
-                className="text-white p-2 rounded-full hover:bg-indigo-500 transition-colors"
+                disabled={isLoading}
+                className="text-white p-2 rounded-full hover:bg-indigo-500 transition-colors disabled:opacity-50"
               >
-                <ArrowPathIcon className="w-5 h-5" />
+                <ArrowPathIcon
+                  className={`w-5 h-5 ${isLoading ? "animate-spin" : ""}`}
+                />
               </button>
               <button
                 onClick={handleLogoutPress}
@@ -376,71 +459,82 @@ export default function Dashboard() {
         <div className="flex-1 px-6 -mt-8 pb-8">
           {/* Quick Stats Overview */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {[
-              {
-                title: "Total Customers",
-                value: quickStats?.totalCustomers || 0,
-                change: "+12.5%",
-                icon: UsersIcon,
-                color: "indigo",
-              },
-              {
-                title: "Active Connections",
-                value: dashboardData?.activeCustomers || 0,
-                change: "+8.2%",
-                icon: ChartBarIcon,
-                color: "green",
-              },
-              {
-                title: "Pending Payments",
-                value: formatCurrency(quickStats?.pendingPayments || 0),
-                change: "+5.3%",
-                icon: ClockIcon,
-                color: "yellow",
-              },
-              {
-                title: "Monthly Revenue",
-                value: formatCurrency(dashboardData?.monthlyRevenue || 0),
-                change: "+15.7%",
-                icon: CurrencyDollarIcon,
-                color: "purple",
-              },
-            ].map((stat, index) => (
-              <div
-                key={index}
-                className={`bg-white p-6 rounded-2xl shadow-sm border-l-4 border-${stat.color}-500`}
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-gray-500 text-sm font-medium">
-                      {stat.title}
-                    </p>
-                    <h3 className="text-2xl font-bold text-gray-800 mt-1">
-                      {stat.value}
-                    </h3>
-                    <div className="flex items-center mt-2">
-                      <span
-                        className={`text-${stat.change.includes("+") ? "green" : "red"
-                          }-500 text-sm flex items-center`}
-                      >
-                        <ArrowTrendingUpIcon className="w-4 h-4 mr-1" />{" "}
-                        {stat.change}
-                      </span>
-                      <span className="text-gray-500 text-sm ml-2">
-                        from last month
-                      </span>
+            {loadingStates.stats
+              ? // Show skeletons while loading
+                Array(4)
+                  .fill(0)
+                  .map((_, index) => (
+                    <div key={index}>{renderStatSkeleton()}</div>
+                  ))
+              : // Show actual stats when loaded
+                [
+                  {
+                    title: "Total Customers",
+                    value: quickStats?.totalCustomers || 0,
+                    change: "+12.5%",
+                    icon: UsersIcon,
+                    color: "indigo",
+                  },
+                  {
+                    title: "Active Connections",
+                    value: dashboardData?.activeCustomers || 0,
+                    change: "+8.2%",
+                    icon: ChartBarIcon,
+                    color: "green",
+                  },
+                  {
+                    title: "Pending Payments",
+                    value: (quickStats?.pendingPayments || 0),
+                    change: "+5.3%",
+                    icon: ClockIcon,
+                    color: "yellow",
+                  },
+                  {
+                    title: `${(new Date())?.toLocaleString('default', { month: 'long' })} Revenue`,
+                    value: formatCurrency(dashboardData?.monthlyRevenue || 0),
+                    change: "+15.7%",
+                    icon: CurrencyDollarIcon,
+                    color: "purple",
+                  },
+                ].map((stat, index) => (
+                  <div
+                    key={index}
+                    className={`bg-white p-6 rounded-2xl shadow-sm border-l-4 border-${stat.color}-500`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-gray-500 text-sm font-medium">
+                          {stat.title}
+                        </p>
+                        <h3 className="text-2xl font-bold text-gray-800 mt-1">
+                          {stat.value}
+                        </h3>
+                        <div className="flex items-center mt-2">
+                          <span
+                            className={`text-${
+                              stat.change.includes("+") ? "green" : "red"
+                            }-500 text-sm flex items-center`}
+                          >
+                            <ArrowTrendingUpIcon className="w-4 h-4 mr-1" />{" "}
+                            {stat.change}
+                          </span>
+                          <span className="text-gray-500 text-sm ml-2">
+                            from last month
+                          </span>
+                        </div>
+                      </div>
+                      <div className={`bg-${stat.color}-100 p-3 rounded-lg`}>
+                        <stat.icon
+                          className={`w-6 h-6 text-${stat.color}-600`}
+                        />
+                      </div>
                     </div>
                   </div>
-                  <div className={`bg-${stat.color}-100 p-3 rounded-lg`}>
-                    <stat.icon className={`w-6 h-6 text-${stat.color}-600`} />
-                  </div>
-                </div>
-              </div>
-            ))}
+                ))}
           </div>
 
-          {/* Rest of your dashboard content remains the same */}
-          {/* Quick Actions */}
+          {/* Rest of your dashboard content with similar loading states */}
+          {/* Quick Actions - Always show immediately */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {quickActions.map((action, index) => (
               <Link
@@ -458,7 +552,7 @@ export default function Dashboard() {
             ))}
           </div>
 
-          {/* Charts Section */}
+          {/* Charts Section with loading states */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             {/* Revenue Chart */}
             <div className="bg-white rounded-lg shadow-sm p-6">
@@ -466,14 +560,24 @@ export default function Dashboard() {
                 <h3 className="text-lg font-semibold text-gray-800">
                   Revenue Analytics
                 </h3>
-                <select className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                  <option>Last 7 Days</option>
-                  <option>Last 30 Days</option>
-                  <option>Last 90 Days</option>
-                </select>
+                {loadingStates.revenue ? (
+                  <div className="h-8 w-32 bg-gray-200 rounded animate-pulse"></div>
+                ) : (
+                  <select className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option>Last 7 Days</option>
+                    <option>Last 30 Days</option>
+                    <option>Last 90 Days</option>
+                  </select>
+                )}
               </div>
               <div className="h-64">
-                <Line data={revenueChartData} options={chartOptions} />
+                {loadingStates.revenue ? (
+                  <div className="h-full w-full bg-gray-100 rounded animate-pulse flex items-center justify-center">
+                    <div className="text-gray-400">Loading revenue data...</div>
+                  </div>
+                ) : (
+                  <Line data={revenueChartData} options={chartOptions} />
+                )}
               </div>
             </div>
 
@@ -483,19 +587,31 @@ export default function Dashboard() {
                 <h3 className="text-lg font-semibold text-gray-800">
                   Customer Growth
                 </h3>
-                <select className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                  <option>Last 7 Days</option>
-                  <option>Last 30 Days</option>
-                  <option>Last 90 Days</option>
-                </select>
+                {loadingStates.customers ? (
+                  <div className="h-8 w-32 bg-gray-200 rounded animate-pulse"></div>
+                ) : (
+                  <select className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option>Last 7 Days</option>
+                    <option>Last 30 Days</option>
+                    <option>Last 90 Days</option>
+                  </select>
+                )}
               </div>
               <div className="h-64">
-                <Bar data={packageChartData} options={chartOptions} />
+                {loadingStates.customers ? (
+                  <div className="h-full w-full bg-gray-100 rounded animate-pulse flex items-center justify-center">
+                    <div className="text-gray-400">
+                      Loading customer data...
+                    </div>
+                  </div>
+                ) : (
+                  <Bar data={packageChartData} options={chartOptions} />
+                )}
               </div>
             </div>
           </div>
 
-          {/* Additional Analytics */}
+          {/* Additional Analytics with loading states */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
             {/* Connection Types */}
             <div className="bg-white rounded-lg shadow-sm p-6">
@@ -503,7 +619,15 @@ export default function Dashboard() {
                 Connection Types
               </h3>
               <div className="h-64">
-                <Pie data={connectionTypeChartData} options={chartOptions} />
+                {loadingStates.metrics ? (
+                  <div className="h-full w-full bg-gray-100 rounded animate-pulse flex items-center justify-center">
+                    <div className="text-gray-400">
+                      Loading connection data...
+                    </div>
+                  </div>
+                ) : (
+                  <Pie data={connectionTypeChartData} options={chartOptions} />
+                )}
               </div>
             </div>
 
@@ -512,10 +636,29 @@ export default function Dashboard() {
               <h3 className="text-lg font-semibold text-gray-800 mb-6">
                 Payment Status
               </h3>
-              {dashboardData?.paymentStatusDistribution && (
+              {loadingStates.metrics ? (
                 <div className="space-y-4">
-                  {Object.entries(dashboardData.paymentStatusDistribution).map(
-                    ([status, count]) => (
+                  {Array(4)
+                    .fill(0)
+                    .map((_, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between"
+                      >
+                        <div className="flex items-center">
+                          <div className="w-3 h-3 bg-gray-200 rounded-full mr-3"></div>
+                          <div className="h-4 bg-gray-200 rounded w-20"></div>
+                        </div>
+                        <div className="h-4 bg-gray-200 rounded w-8"></div>
+                      </div>
+                    ))}
+                </div>
+              ) : (
+                dashboardData?.paymentStatusDistribution && (
+                  <div className="space-y-4">
+                    {Object.entries(
+                      dashboardData.paymentStatusDistribution
+                    ).map(([status, count]) => (
                       <div
                         key={status}
                         className="flex items-center justify-between"
@@ -533,9 +676,9 @@ export default function Dashboard() {
                           {count}
                         </span>
                       </div>
-                    )
-                  )}
-                </div>
+                    ))}
+                  </div>
+                )
               )}
             </div>
 
@@ -544,47 +687,64 @@ export default function Dashboard() {
               <h3 className="text-lg font-semibold text-gray-800 mb-6">
                 Performance Metrics
               </h3>
-              <div className="space-y-4">
-                {[
-                  {
-                    label: "Customer Retention",
-                    value: dashboardData?.customerRetentionRate || "0%",
-                    color: "text-green-600",
-                  },
-                  {
-                    label: "Avg Revenue/Customer",
-                    value: `Rs${dashboardData?.averageRevenuePerCustomer || "0"
+              {loadingStates.metrics ? (
+                <div className="space-y-4">
+                  {Array(4)
+                    .fill(0)
+                    .map((_, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between"
+                      >
+                        <div className="h-4 bg-gray-200 rounded w-32"></div>
+                        <div className="h-4 bg-gray-200 rounded w-12"></div>
+                      </div>
+                    ))}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {[
+                    {
+                      label: "Customer Retention",
+                      value: dashboardData?.customerRetentionRate || "0%",
+                      color: "text-green-600",
+                    },
+                    {
+                      label: "Avg Revenue/Customer",
+                      value: `Rs${
+                        dashboardData?.averageRevenuePerCustomer || "0"
                       }`,
-                    color: "text-blue-600",
-                  },
-                  {
-                    label: "Payment Collection",
-                    value: dashboardData?.paymentCollectionRate || "0%",
-                    color: "text-indigo-600",
-                  },
-                  {
-                    label: "New Customers",
-                    value: quickStats?.newCustomersThisMonth || 0,
-                    color: "text-purple-600",
-                  },
-                ].map((metric, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between"
-                  >
-                    <span className="text-sm text-gray-600">
-                      {metric.label}
-                    </span>
-                    <span className={`text-sm font-bold ${metric.color}`}>
-                      {metric.value}
-                    </span>
-                  </div>
-                ))}
-              </div>
+                      color: "text-blue-600",
+                    },
+                    {
+                      label: "Payment Collection",
+                      value: dashboardData?.paymentCollectionRate || "0%",
+                      color: "text-indigo-600",
+                    },
+                    {
+                      label: "New Customers",
+                      value: quickStats?.newCustomersThisMonth || 0,
+                      color: "text-purple-600",
+                    },
+                  ].map((metric, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between"
+                    >
+                      <span className="text-sm text-gray-600">
+                        {metric.label}
+                      </span>
+                      <span className={`text-sm font-bold ${metric.color}`}>
+                        {metric.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Recent Activity Section */}
+          {/* Recent Activity Section with loading states */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             {/* Recent Payments */}
             <div className="bg-white rounded-lg shadow-sm p-6">
@@ -592,59 +752,86 @@ export default function Dashboard() {
                 <h3 className="text-lg font-semibold text-gray-800">
                   Recent Payments
                 </h3>
-                <Link
-                  href="/payments"
-                  className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
-                >
-                  View All →
-                </Link>
+                {!loadingStates.metrics && (
+                  <Link
+                    href="/payments"
+                    className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+                  >
+                    View All →
+                  </Link>
+                )}
               </div>
               <div className="space-y-4">
-                {dashboardData?.recentPayments?.slice(0, 5).map((payment) => (
-                  <div
-                    key={payment.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-gray-50"
-                  >
-                    <div className="flex items-center">
-                      <div
-                        className={`p-2 rounded-full ${payment.status === "paid"
-                            ? "bg-green-100"
-                            : payment.status === "pending"
-                              ? "bg-yellow-100"
-                              : "bg-red-100"
-                          }`}
-                      >
-                        <CreditCardIcon
-                          className={`w-4 h-4 ${payment.status === "paid"
-                              ? "text-green-600"
-                              : payment.status === "pending"
-                                ? "text-yellow-600"
-                                : "text-red-600"
-                            }`}
-                        />
-                      </div>
-                      <div className="ml-3">
-                        <p className="text-sm font-medium text-gray-800">
-                          {payment.customer?.name}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {payment.plan?.name}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-gray-800">
-                        {formatCurrency(payment.amount)}
-                      </p>
-                      <p
-                        className="text-xs capitalize"
-                        style={{ color: getStatusColor(payment.status) }}
-                      >
-                        {payment.status}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                {loadingStates.metrics
+                  ? Array(5)
+                      .fill(0)
+                      .map((_, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-3 rounded-lg bg-gray-50 animate-pulse"
+                        >
+                          <div className="flex items-center">
+                            <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+                            <div className="ml-3">
+                              <div className="h-4 bg-gray-200 rounded w-24 mb-1"></div>
+                              <div className="h-3 bg-gray-200 rounded w-16"></div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="h-4 bg-gray-200 rounded w-16 mb-1"></div>
+                            <div className="h-3 bg-gray-200 rounded w-12"></div>
+                          </div>
+                        </div>
+                      ))
+                  : dashboardData?.recentPayments
+                      ?.slice(0, 5)
+                      .map((payment) => (
+                        <div
+                          key={payment.id}
+                          className="flex items-center justify-between p-3 rounded-lg bg-gray-50"
+                        >
+                          <div className="flex items-center">
+                            <div
+                              className={`p-2 rounded-full ${
+                                payment.status === "paid"
+                                  ? "bg-green-100"
+                                  : payment.status === "pending"
+                                  ? "bg-yellow-100"
+                                  : "bg-red-100"
+                              }`}
+                            >
+                              <CreditCardIcon
+                                className={`w-4 h-4 ${
+                                  payment.status === "paid"
+                                    ? "text-green-600"
+                                    : payment.status === "pending"
+                                    ? "text-yellow-600"
+                                    : "text-red-600"
+                                }`}
+                              />
+                            </div>
+                            <div className="ml-3">
+                              <p className="text-sm font-medium text-gray-800">
+                                {payment.customer?.name}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {payment.plan?.name}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-bold text-gray-800">
+                              {formatCurrency(payment.amount)}
+                            </p>
+                            <p
+                              className="text-xs capitalize"
+                              style={{ color: getStatusColor(payment.status) }}
+                            >
+                              {payment.status}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
               </div>
             </div>
 
@@ -654,48 +841,75 @@ export default function Dashboard() {
                 <h3 className="text-lg font-semibold text-gray-800">
                   Recent Customers
                 </h3>
-                <Link
-                  href="/customers"
-                  className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
-                >
-                  View All →
-                </Link>
+                {!loadingStates.metrics && (
+                  <Link
+                    href="/customers"
+                    className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+                  >
+                    View All →
+                  </Link>
+                )}
               </div>
               <div className="space-y-4">
-                {dashboardData?.recentCustomers?.slice(0, 5).map((customer) => (
-                  <div
-                    key={customer.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-gray-50"
-                  >
-                    <div className="flex items-center">
-                      <div className="bg-blue-100 p-2 rounded-full">
-                        <UsersIcon className="w-4 h-4 text-blue-600" />
-                      </div>
-                      <div className="ml-3">
-                        <p className="text-sm font-medium text-gray-800">
-                          {customer.name}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {customer.mobile}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-600">
-                        {customer.plan?.name}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {customer.connectionType?.name}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                {loadingStates.metrics
+                  ? Array(5)
+                      .fill(0)
+                      .map((_, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-3 rounded-lg bg-gray-50 animate-pulse"
+                        >
+                          <div className="flex items-center">
+                            <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+                            <div className="ml-3">
+                              <div className="h-4 bg-gray-200 rounded w-24 mb-1"></div>
+                              <div className="h-3 bg-gray-200 rounded w-16"></div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="h-4 bg-gray-200 rounded w-16 mb-1"></div>
+                            <div className="h-3 bg-gray-200 rounded w-12"></div>
+                          </div>
+                        </div>
+                      ))
+                  : dashboardData?.recentCustomers
+                      ?.slice(0, 5)
+                      .map((customer) => (
+                        <div
+                          key={customer.id}
+                          className="flex items-center justify-between p-3 rounded-lg bg-gray-50"
+                        >
+                          <div className="flex items-center">
+                            <div className="bg-blue-100 p-2 rounded-full">
+                              <UsersIcon className="w-4 h-4 text-blue-600" />
+                            </div>
+                            <div className="ml-3">
+                              <p className="text-sm font-medium text-gray-800">
+                                {customer.name}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {customer.mobile}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm text-gray-600">
+                              {customer.plan?.name}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {customer.connectionType?.name}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
               </div>
             </div>
           </div>
         </div>
       </div>
-      {isLoading && (
+
+      {/* Global Loading Overlay - Only show if everything is still loading */}
+      {isLoading && Object.values(loadingStates).some((state) => state) && (
         <div className="fixed inset-0 bg-[rgba(0,0,0,0.8)] bg-opacity-20 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-lg p-6 flex flex-col items-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
