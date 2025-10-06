@@ -69,24 +69,26 @@ export const fetchPayments = async (
   status?: string,
   search?: string
 ): Promise<PaymentsResponse> => {
-  const params = new URLSearchParams({
-    startDate,
-    endDate,
+  const params: any = {
     page: page.toString(),
-    limit: limit.toString()
-  });
+    limit: limit.toString(),
+  };
+  
+  // Only add date filters if not searching
+  if (!search || search.trim() === '') {
+    if (startDate) params.startDate = startDate;
+    if (endDate) params.endDate = endDate;
+  }
   
   if (status && status !== 'all') {
-    params.append('status', status);
+    params.status = status;
   }
   
-  // Build the URL - search is a separate endpoint parameter
-  let url = `/payments?${params}`;
   if (search && search.trim() !== '') {
-    url = `/payments?search=${encodeURIComponent(search.trim())}`;
+    params.search = search.trim();
   }
   
-  const { data } = await apiClient.get(url);
+  const { data } = await apiClient.get('/payments', { params });
   return data;
 };
 

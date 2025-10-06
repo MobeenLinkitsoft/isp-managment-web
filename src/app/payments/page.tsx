@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -103,6 +103,7 @@ export default function KhataPage() {
     pendingAmount: 0
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [apiSearchQuery, setApiSearchQuery] = useState("");
@@ -117,6 +118,11 @@ export default function KhataPage() {
   const [employees, setEmployees] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
   const [showMethodDropdown, setShowMethodDropdown] = useState(false);
+
+  // Refs to prevent multiple calls and handle mounting
+  const hasLoadedRef = useRef(false);
+  const isMountedRef = useRef(false);
+  const loadDataTimeoutRef = useRef<NodeJS.Timeout>();
 
   // Date range state
   const now = new Date();
@@ -145,11 +151,23 @@ export default function KhataPage() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
+  // Setup mounting ref
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (loadDataTimeoutRef.current) {
+        clearTimeout(loadDataTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Load current user once
   useEffect(() => {
     const fetchUserData = async () => {
       try {
         const user = await getCurrentUser();
-        if (user) {
+        if (user && isMountedRef.current) {
           setCurrentUser(user);
         }
       } catch (error) {
@@ -159,53 +177,106 @@ export default function KhataPage() {
     fetchUserData();
   }, []);
 
+  // Initial load - only once when component mounts
   useEffect(() => {
-    loadData();
-  }, [startDate, endDate, currentUser, currentPage, statusFilter, apiSearchQuery]);
+    if (!hasLoadedRef.current && currentUser) {
+      hasLoadedRef.current = true;
+      loadData();
+    }
+  }, [currentUser]); // Only depend on currentUser
+
+  // Load data when filters change (with debounce)
+  useEffect(() => {
+    if (hasLoadedRef.current && isMountedRef.current) {
+      // Clear previous timeout
+      if (loadDataTimeoutRef.current) {
+        clearTimeout(loadDataTimeoutRef.current);
+      }
+      
+      // Set new timeout with debounce
+      loadDataTimeoutRef.current = setTimeout(() => {
+        if (isMountedRef.current) {
+          setCurrentPage(1);
+          loadData();
+        }
+      }, 300); // 300ms debounce
+    }
+
+    return () => {
+      if (loadDataTimeoutRef.current) {
+        clearTimeout(loadDataTimeoutRef.current);
+      }
+    };
+  }, [startDate, endDate, statusFilter, apiSearchQuery]);
+
+  // Load data when page changes
+  useEffect(() => {
+    if (hasLoadedRef.current && currentPage !== 1 && isMountedRef.current) {
+      loadData();
+    }
+  }, [currentPage]);
 
   const filterPaymentsByRole = (paymentsData: Payment[]) => {
+    if (!isMountedRef.current) return [];
+    
     if (currentUser?.role === "admin") {
-      return paymentsData; // Admin sees all payments
+      return paymentsData;
     } else {
-      // Employee sees only payments they created or received
       return paymentsData.filter(
         (payment) => payment.customer?.addedBy === currentUser?.id
       );
     }
   };
 
- const loadData = async () => {
-  try {
-    setIsLoading(true);
+  const loadData = async () => {
+    // Prevent calls if component is unmounted
+    if (!isMountedRef.current) return;
     
-    // If there's a search query, we don't use date filters
-    const paymentsResponse = await fetchPayments(
-      apiSearchQuery ? '' : startDate, // Don't use dates when searching
-      apiSearchQuery ? '' : endDate,   // Don't use dates when searching
-      currentPage, 
-      ITEMS_PER_PAGE,
-      statusFilter,
-      apiSearchQuery
-    );
-    
-    const filteredPaymentsData = filterPaymentsByRole(paymentsResponse.data);
-    setPayments(filteredPaymentsData);
-    setPagination(paymentsResponse.pagination);
-    setStats(paymentsResponse.stats);
+    try {
+      // Only show loading for initial load or manual refresh
+      if (isInitialLoad || refreshing) {
+        setIsLoading(true);
+      }
+      
+      const paymentsResponse = await fetchPayments(
+        apiSearchQuery ? '' : startDate,
+        apiSearchQuery ? '' : endDate,
+        currentPage, 
+        ITEMS_PER_PAGE,
+        statusFilter,
+        apiSearchQuery
+      );
+      
+      // Only update state if component is still mounted
+      if (isMountedRef.current) {
+        const filteredPaymentsData = filterPaymentsByRole(paymentsResponse.data);
+        setPayments(filteredPaymentsData);
+        setPagination(paymentsResponse.pagination);
+        setStats(paymentsResponse.stats);
 
-    if (currentUser?.role === "admin") {
-      const employeesResponse = await fetchEmployees();
-      setEmployees(employeesResponse);
+        if (currentUser?.role === "admin") {
+          const employeesResponse = await fetchEmployees();
+          setEmployees(employeesResponse);
+        }
+
+        // Mark initial load as complete
+        if (isInitialLoad) {
+          setIsInitialLoad(false);
+        }
+      }
+    } catch (error) {
+      console.error("Error loading data:", error);
+      if (isMountedRef.current) {
+        alert("Failed to load payments data");
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setIsLoading(false);
+        setRefreshing(false);
+        setIsSearching(false);
+      }
     }
-  } catch (error) {
-    console.error("Error loading data:", error);
-    alert("Failed to load payments data");
-  } finally {
-    setIsLoading(false);
-    setRefreshing(false);
-    setIsSearching(false);
-  }
-};
+  };
 
   const handleSearch = () => {
     if (searchQuery.trim() !== apiSearchQuery) {
@@ -225,25 +296,19 @@ export default function KhataPage() {
 
   const handleRefresh = () => {
     setRefreshing(true);
-    setCurrentPage(1); // Reset to first page on refresh
+    setCurrentPage(1);
     loadData();
   };
 
   const handleDateSearch = () => {
     setStartDate(tempStartDate);
     setEndDate(tempEndDate);
-    setCurrentPage(1); // Reset to first page when date changes
+    setCurrentPage(1);
     setShowDatePicker(false);
   };
 
-  // Reset to first page when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [statusFilter]);
-
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
-    // Scroll to top when page changes
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -255,8 +320,6 @@ export default function KhataPage() {
     (sum, payment) => (payment.status === "paid" ? sum + payment.amount : sum),
     0
   );
-
-  // Client-side search filtering is removed since we're using API search
 
   const handleUpdatePayment = async () => {
     if (!selectedPayment) return;
@@ -270,7 +333,7 @@ export default function KhataPage() {
       });
 
       setShowPaymentModal(false);
-      loadData(); // Refresh data
+      loadData();
     } catch (error) {
       console.error("Error updating payment:", error);
       alert("Failed to update payment");
@@ -306,8 +369,7 @@ export default function KhataPage() {
   };
 
   const handlePrint = (payment: Payment) => {
-    const printDate = new Date().toLocaleDateString("en-GB"); // dd/mm/yyyy
-
+    const printDate = new Date().toLocaleDateString("en-GB");
     const printContent = `
     <div style="width:58mm;font-size:12px;font-family:Arial,sans-serif;line-height:1.4;">
       <!-- Logo and Header -->
@@ -343,9 +405,7 @@ export default function KhataPage() {
           <tr>
             <td style="padding:2px;"></td>
             <td style="text-align:center;padding:2px;">30</td>
-            <td style="text-align:right;padding:2px;">Rs ${payment.amount.toFixed(
-              2
-            )}</td>
+            <td style="text-align:right;padding:2px;">Rs ${payment.amount.toFixed(2)}</td>
           </tr>
         </tbody>
       </table>
@@ -356,9 +416,7 @@ export default function KhataPage() {
       <table style="width:100%;font-size:12px;">
         <tr>
           <td style="font-weight:bold;">Total Amount</td>
-          <td style="text-align:right;font-weight:bold;">Rs ${payment.amount.toFixed(
-            2
-          )}</td>
+          <td style="text-align:right;font-weight:bold;">Rs ${payment.amount.toFixed(2)}</td>
         </tr>
       </table>
       
@@ -403,35 +461,28 @@ export default function KhataPage() {
     }
   };
 
-  // Generate page numbers for pagination
   const generatePageNumbers = () => {
     const pages = [];
     const totalPages = pagination.totalPages;
     const currentPage = pagination.currentPage;
     
-    // Always show first page
     pages.push(1);
     
-    // Calculate range around current page
     let startPage = Math.max(2, currentPage - 1);
     let endPage = Math.min(totalPages - 1, currentPage + 1);
     
-    // Add ellipsis after first page if needed
     if (startPage > 2) {
       pages.push('...');
     }
     
-    // Add pages around current page
     for (let i = startPage; i <= endPage; i++) {
       pages.push(i);
     }
     
-    // Add ellipsis before last page if needed
     if (endPage < totalPages - 1) {
       pages.push('...');
     }
     
-    // Always show last page if there is more than one page
     if (totalPages > 1) {
       pages.push(totalPages);
     }
@@ -651,7 +702,7 @@ export default function KhataPage() {
 
         {/* Payments Table */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          {payments.length === 0 ? (
+          {payments.length === 0 && !isLoading ? (
             <div className="text-center py-12">
               <CurrencyDollarIcon className="mx-auto h-16 w-16 text-gray-400" />
               <h3 className="mt-4 text-lg font-medium text-gray-900">
